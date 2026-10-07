@@ -1,5 +1,5 @@
 {
-  "name": "HA GitOps Repository",
-  "url": "https://github.com/askb/ha-gitops",
-  "maintainer": "askb"
+  "name": "HA GitOps Repository (mmornati fork)",
+  "url": "https://github.com/mmornati/ha-gitops",
+  "maintainer": "mmornati (fork of askb/ha-gitops)"
 }
