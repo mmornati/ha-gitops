@@ -36,6 +36,42 @@ configuration:
     name: Apply pulled changes
     description: >-
       After a merged PR is pulled into /config, apply it to the running Home
-      Assistant. "reload" calls homeassistant.reload_all (no restart);
-      "restart" restarts HA (needed for configuration.yaml integration or
-      custom_components changes); "off" disables it.
+      Assistant. All modes run the HA config check first and skip applying if
+      it fails. "auto" runs only the reloads the changed files need and asks
+      for a restart when one is needed; "reload" calls
+      homeassistant.reload_all; "restart" restarts HA; "off" disables it.
+  auto_restart:
+    name: Restart automatically
+    description: >-
+      In "auto" mode, restart Home Assistant by itself (after a passing config
+      check) when merged changes need it, instead of only notifying you.
+  sync_mode:
+    name: Sync mode
+    description: >-
+      "both" reacts to merged PRs (webhook and poll) and to local edits (file
+      watcher); "pull" only to merged PRs; "push" only to local edits;
+      "schedule" only runs every interval, like versions before 0.4.0.
+  poll_seconds:
+    name: Remote poll (seconds)
+    description: >-
+      How often to check GitHub for merged PRs with git ls-remote. This is a
+      git call, not a REST API call, so it does not use the API quota. 0 turns
+      polling off; use 300 or more when the webhook is set up.
+  debounce_seconds:
+    name: Debounce (seconds)
+    description: >-
+      After a local file changes, wait until nothing has changed for this long
+      before committing, so a burst of edits gives one commit.
+  webhook_secret:
+    name: Webhook secret
+    description: >-
+      Shared secret of the GitHub webhook. When set, the app listens on port
+      8098 for POST /webhook and checks the X-Hub-Signature-256 header. Map
+      the port in the Network section and expose it through your proxy.
+  mqtt_discovery:
+    name: MQTT entities
+    description: >-
+      Create an "HA GitOps" device with sensors, buttons and switches through
+      MQTT discovery, when an MQTT broker is set up in Home Assistant.
+network:
+  8098/tcp: GitHub webhook (only used when a webhook secret is set)

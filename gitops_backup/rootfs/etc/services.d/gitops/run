@@ -2,20 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Anil Belur
 # ==============================================================================
-# GitOps Config Backup — service loop
+# HA GitOps — controller (schedule, poll, webhook, file watcher, MQTT, panel).
+# The git work itself is done by /app/gitops_backup.sh, run by the controller.
 # ==============================================================================
 
-INTERVAL_HOURS=$(bashio::config 'interval_hours')
-RUN_AT_START=$(bashio::config 'run_at_start')
-
-bashio::log.info "GitOps Config Backup starting (every ${INTERVAL_HOURS}h)"
-
-if bashio::var.true "${RUN_AT_START}"; then
-    bashio::log.info "run_at_start enabled — running first backup now"
-    bash /app/gitops_backup.sh || bashio::log.warning "Backup run failed (see log in config dir)"
-fi
-
-while true; do
-    sleep "$((INTERVAL_HOURS * 3600))"
-    bash /app/gitops_backup.sh || bashio::log.warning "Backup run failed (see log in config dir)"
-done
+bashio::log.info "HA GitOps starting"
+export BUILD_VERSION
+BUILD_VERSION="$(bashio::addon.version 2>/dev/null || echo dev)"
+exec python3 -u /app/controller.py

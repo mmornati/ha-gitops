@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.4.0
+
+Real-time sync and control from Home Assistant.
+
+- **Rolling backup PR**: new drift is pushed (fast-forward) onto the open
+  backup PR instead of opening a new PR every run; the PR title and body list
+  the changed files by kind.
+- **Real-time sync**: signed GitHub webhook on port 8098 (`webhook_secret`),
+  `git ls-remote` poll (`poll_seconds`, no REST quota used), inotify file
+  watcher with `debounce_seconds`, and `sync_mode` to pick the triggers.
+- **Safe apply**: the HA config check runs before any reload or restart;
+  new default `apply_after_pull: auto` runs only the reloads the changed
+  paths need and notifies when a restart is required (`auto_restart` to do
+  it automatically).
+- **Control**: MQTT discovery device (status, pending changes, open PR and
+  checks, buttons, pause/auto-apply switches, update entity), REST sensor
+  fallback, `hassio.addon_stdin` commands, `ha_gitops_*` events.
+- **Ingress panel**: status, open PR, pending diff, history with revert PRs,
+  log.
+- Security: the GitHub token is no longer written into
+  `/config/.git/config` (and so into HA backups); existing remotes are
+  cleaned on the first run.
+- Fix: `signoff: false` was ignored and commits were always signed off.
+- One engine run at a time (lock), so triggers never overlap.
+- The run log and status JSON moved to the app's `/data`; the one-line
+  `/config/.gitops_backup_status` is still written.
+- Docs: "add-on" is now "app", following Home Assistant (upstream PR #7).
+
 ## 0.3.2
 
 - Fix: after a `stash_conflict` the add-on kept the live files but left the
