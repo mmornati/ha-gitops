@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1
+
+- Fix: every run failed at once with `flock: unrecognized option: w` and
+  "Another run still holds the lock", because the app image ships BusyBox
+  `flock`, which has no `-w`. The engine now waits for the lock with
+  `flock -n` in a loop, which works with both BusyBox and util-linux. The
+  self-check runs with a flock that rejects `-w`, and the image smoke test
+  checks `flock -n`.
+
 ## 0.4.0
 
 Real-time sync and control from Home Assistant.
