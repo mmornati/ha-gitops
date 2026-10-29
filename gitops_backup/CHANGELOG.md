@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1
+
+- Fix: after a `stash_conflict` the add-on kept the live files but left the
+  conflict in the git index, so every later run failed with `needs merge` /
+  `could not write index` and no backup or upstream sync happened again
+  until someone ran `git reset` by hand. The index is now cleared right after
+  the conflict, and a repo already stuck that way heals on the next run.
+  The working tree (the live config) is never touched.
+
 ## 0.3.0
 
 - Feature: `apply_after_pull` — after a merged PR is pulled into `/config`, the
