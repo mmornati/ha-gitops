@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.3
+
+- Never commit `zigbee2mqtt/secret.yaml`. Zigbee2MQTT keeps its MQTT login
+  and network key there when its `configuration.yaml` uses `!secret` refs,
+  and the name (singular `secret.yaml`) is not matched by the existing
+  `secrets.yaml` pattern, so a backup run would have swept it into a PR.
+  It is now in the seeded `.gitignore`, the local exclude and the untracker.
+
 ## 0.3.2
 
 - Fix: after a `stash_conflict` the add-on kept the live files but left the
