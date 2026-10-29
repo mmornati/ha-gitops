@@ -68,6 +68,7 @@ Run both layers:
 |------|----------------------|--------------------------|
 | Config YAML (automations, dashboards, …) | ✅ versioned, reviewable diffs | ✅ inside the archive |
 | `secrets.yaml` | ❌ **never** (gitignored) | ✅ inside the **encrypted** archive |
+| `zigbee2mqtt/secret.yaml` (Z2M MQTT login, network key) | ❌ **never** | ✅ inside the **encrypted** archive |
 | `.storage/` — UI-added **integrations**, **logins/tokens**, **device/entity/area registries**, **UI (Lovelace) dashboards**, helpers | ❌ never (holds secrets) | ✅ **most restore-critical item** |
 | Credentials: `*.token`, `.google.token`, `*.key`, `*.pem`, `.cloud/` | ❌ never | ✅ |
 | Databases, history, logs | ❌ never | ✅ (recorder DB, if selected) |

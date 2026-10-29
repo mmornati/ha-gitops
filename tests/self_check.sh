@@ -141,6 +141,8 @@ HOME="$TMP" git -C "$TMP/config" commit -q -m "user gitignore"
 echo "success:no_changes:" > "$TMP/config/.gitops_backup_status"
 echo "log line" > "$TMP/config/gitops_backup.log"
 echo "ya29.oauth-secret" > "$TMP/config/.google.token"  # untracked secret, not in user ignore
+mkdir -p "$TMP/config/zigbee2mqtt"
+echo "network_key: [1, 2]" > "$TMP/config/zigbee2mqtt/secret.yaml"  # Z2M secrets, not in user ignore
 echo "PRIVATE KEY" > "$TMP/config/leaked.key"           # secret already committed by a prior run
 HOME="$TMP" git -C "$TMP/config" add -f leaked.key
 HOME="$TMP" git -C "$TMP/config" commit -q -m "oops: committed a key"
@@ -152,7 +154,7 @@ tree=$(git -c safe.bareRepository=all -C "$TMP/origin.git" ls-tree -r --name-onl
 if echo "$tree" | grep -qE '^\.gitops_backup_status$|^gitops_backup\.log$'; then
   echo "FAIL: app runtime files committed to backup branch"; exit 1
 fi
-if echo "$tree" | grep -qE '^\.google\.token$|^leaked\.key$|^secrets\.yaml$'; then
+if echo "$tree" | grep -qE '^\.google\.token$|^leaked\.key$|^secrets\.yaml$|^zigbee2mqtt/secret\.yaml$'; then
   echo "FAIL: a secret/credential was committed to the backup branch"; exit 1
 fi
 echo "$tree" | grep -q "^configuration.yaml$" || { echo "FAIL: real drift not backed up"; exit 1; }

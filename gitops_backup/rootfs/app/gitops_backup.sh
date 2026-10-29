@@ -229,6 +229,7 @@ seed_gitignore() {
         cat > .gitignore <<'EOF'
 # Secrets and credentials — never commit
 secrets.yaml
+zigbee2mqtt/secret.yaml
 *.pem
 *.key
 *.token
@@ -268,6 +269,7 @@ never_commit_patterns() {
     # committed. Shared by the exclude writer and the untracker.
     cat <<'EOF'
 secrets.yaml
+zigbee2mqtt/secret.yaml
 *.key
 *.pem
 *.token
