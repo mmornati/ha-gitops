@@ -92,4 +92,5 @@ jobs:
           docker run --rm --entrypoint sh gitops-backup:test \
             -c "command -v git && command -v jq && command -v curl && command -v inotifywait \
               && bash -n /app/gitops_backup.sh \
+              && bash -c 'exec 9>/tmp/lock && flock -n 9' \
               && python3 -c 'import sys; sys.path.insert(0, \"/app\"); import aiohttp, paho.mqtt.client, controller'"

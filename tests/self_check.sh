@@ -246,13 +246,31 @@ fi
 GITOPS_MODE=revert REVERT_SHA="not-a-sha" run
 status | grep -q "^error:revert" || { echo "FAIL: bad revert sha accepted"; exit 1; }
 
-# 11. Only one run at a time
+# 11. Only one run at a time. The app image ships BusyBox flock, which has
+#     no -w: run with a flock that rejects it, like BusyBox does.
+mkdir -p "$TMP/bin"
+real_flock=$(command -v flock)
+cat > "$TMP/bin/flock" <<EOF
+#!/bin/sh
+for a in "\$@"; do case "\$a" in -w|--timeout*|-E|--conflict-exit-code*) echo "flock: unrecognized option" >&2; exit 1 ;; esac; done
+exec "$real_flock" "\$@"
+EOF
+chmod +x "$TMP/bin/flock"
 exec 8>"$TMP/data/gitops.lock"
 flock 8
 start=$(date +%s)
-LOCK_WAIT=2 run
+PATH="$TMP/bin:$PATH" LOCK_WAIT=2 run
 [ $(( $(date +%s) - start )) -ge 2 ] || { echo "FAIL: run did not wait for the lock"; exit 1; }
+grep -q "holds the lock after 2s" "$TMP/data/gitops_backup.log" \
+  || { echo "FAIL: locked run did not report the lock"; exit 1; }
 flock -u 8
+# With the lock free, a run under BusyBox-style flock must go through
+echo "after lock" > "$TMP/config/afterlock.yaml"
+sleep 1
+PATH="$TMP/bin:$PATH" run
+status | grep -qvE "^error" || { echo "FAIL: run with BusyBox-style flock = $(status)"; exit 1; }
+[ "$(stat -c %Y "$TMP/data/status.json")" -ge "$start" ] \
+  || { echo "FAIL: run with BusyBox-style flock did not run"; exit 1; }
 
 # 12. Smart apply: changed paths map to the smallest action
 classify() {

@@ -1,6 +1,6 @@
 {
   "name": "HA GitOps (fork)",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "slug": "gitops_backup",
   "description": "PR-gated GitHub sync for your Home Assistant config: real-time backup PRs, merged changes applied live, CI validates before merge",
   "url": "https://github.com/mmornati/ha-gitops",

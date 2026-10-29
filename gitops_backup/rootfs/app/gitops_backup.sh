@@ -541,6 +541,17 @@ backup_drift() {
     fi
 }
 
+acquire_lock() {
+    # Waits up to LOCK_WAIT seconds for the lock on fd 9. BusyBox flock (the
+    # one in the app image) has no -w, so poll with -n, which both have.
+    local waited=0
+    until flock -n 9; do
+        [ "$waited" -lt "$LOCK_WAIT" ] || return 1
+        sleep 1
+        waited=$((waited + 1))
+    done
+}
+
 main() {
     mkdir -p "$DATA_DIR"
     # Input validation at the trust boundary
@@ -552,7 +563,7 @@ main() {
     # One run at a time: the controller, the webhook, the watcher and a manual
     # run must never stash or rebase /config concurrently.
     exec 9>"$LOCK_FILE"
-    if ! flock -w "$LOCK_WAIT" 9; then
+    if ! acquire_lock; then
         log "Another run still holds the lock after ${LOCK_WAIT}s; giving up"
         exit 75
     fi
