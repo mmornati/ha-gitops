@@ -48,15 +48,28 @@ jobs:
       - name: Run self-check
         run: bash tests/self_check.sh
 
-  addon-lint:
-    name: Add-on Lint
+  python-tests:
+    name: Controller Tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           persist-credentials: false
-      - name: Home Assistant Add-on Lint
+      - name: Unit + controller tests
+        run: |
+          pip install --quiet aiohttp
+          python3 -m unittest tests/test_core.py tests/test_controller.py
+
+  addon-lint:
+    name: App Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Home Assistant App Lint
         uses: frenck/action-addon-linter@f995494fd84fae6310d23617e66d0e37de4f14eb  # v2.21.0
         with:
           path: ./gitops_backup
@@ -69,7 +82,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
         with:
           persist-credentials: false
-      - name: Build add-on image
+      - name: Build app image
         run: |
           docker build \
             --build-arg BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.21 \
@@ -77,4 +90,6 @@ jobs:
       - name: Smoke — binaries present
         run: |
           docker run --rm --entrypoint sh gitops-backup:test \
-            -c "command -v git && command -v jq && command -v curl && bash -n /app/gitops_backup.sh"
+            -c "command -v git && command -v jq && command -v curl && command -v inotifywait \
+              && bash -n /app/gitops_backup.sh \
+              && python3 -c 'import sys; sys.path.insert(0, \"/app\"); import aiohttp, paho.mqtt.client, controller'"
