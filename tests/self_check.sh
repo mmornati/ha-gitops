@@ -135,9 +135,10 @@ status | grep -q "^success:synced" \
   || { echo "FAIL: merged backup with a rename reported = $(status)"; exit 1; }
 [ "$(grep -c "stash_conflict" "$TMP/data/gitops_backup.log" || true)" = "$warnings" ] \
   || { echo "FAIL: false stash_conflict logged for a merged rename"; exit 1; }
-[ -f "$TMP/config/client/moved.py" ] && [ ! -e "$TMP/config/helpers/moved.py" ] \
-  && [ ! -e "$TMP/config/gone.yaml" ] && grep -q "^brand new$" "$TMP/config/brand_new.yaml" \
-  || { echo "FAIL: live files wrong after a merged rename"; exit 1; }
+[ -f "$TMP/config/client/moved.py" ] || { echo "FAIL: moved file missing after a merged rename"; exit 1; }
+[ ! -e "$TMP/config/helpers/moved.py" ] || { echo "FAIL: old path back after a merged rename"; exit 1; }
+[ ! -e "$TMP/config/gone.yaml" ] || { echo "FAIL: deleted file back after a merged backup"; exit 1; }
+grep -q "^brand new$" "$TMP/config/brand_new.yaml" || { echo "FAIL: new file wrong after a merged backup"; exit 1; }
 [ -z "$(git -C "$TMP/config" status --porcelain)" ] \
   || { echo "FAIL: drift left after syncing a merged rename"; exit 1; }
 assert_settled "rename"
