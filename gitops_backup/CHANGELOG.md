@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.2
+
+- Fix: a merged backup PR that added, renamed or deleted a file raised a false
+  `warning:stash_conflict` on the next sync. The live tree still held those
+  files as drift, so `git stash pop` failed on files the pull had just brought
+  back ("already exists, no checkout"). When the stashed files match upstream
+  the run now drops the stash and reports success.
+- Fix: "kept live config" was not true after a failed pop. The stash was
+  dropped without restoring its untracked files, so a new file edited between
+  the backup and the merge went back to the PR version. The live version now
+  wins, and the warning is kept for files that really differ. If a file cannot
+  be restored, the stash is kept and the status says so.
+
 ## 0.4.1
 
 - Fix: every run failed at once with `flock: unrecognized option: w` and

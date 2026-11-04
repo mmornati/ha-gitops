@@ -92,6 +92,108 @@ grep -q "^changed$" "$TMP/config/configuration.yaml" \
   || { echo "FAIL: main not synced to the merged PR"; exit 1; }
 [ -z "$(git -C "$TMP/config" stash list)" ] || { echo "FAIL: stash left behind"; exit 1; }
 
+# 3b-1. Backups that add, rename or delete files. The live tree keeps the drift
+#       after the backup, so the sync that pulls the merged PR stashes files the
+#       pull brings back: `git stash pop` fails with "already exists, no
+#       checkout" and, for a moved file, a rename/delete conflict. Nothing
+#       differs, so this must not be reported as a conflict. Sync mode is the
+#       one that shows it: in full mode the backup step overwrites the status.
+merge_backup() {
+  git -C "$TMP/merge" pull -q origin main
+  git -C "$TMP/merge" fetch -q origin
+  git -C "$TMP/merge" -c user.name=T -c user.email=t@localhost \
+    merge -q --no-ff -m "Merge backup PR" "origin/$(cut -f1 "$TMP/data/open_pr")"
+  git -C "$TMP/merge" push -q origin main
+}
+assert_settled() { # context
+  [ -z "$(git -C "$TMP/config" stash list)" ] || { echo "FAIL: $1: stash left behind"; exit 1; }
+  [ -z "$(git -C "$TMP/config" ls-files -u)" ] || { echo "FAIL: $1: unmerged index entries"; exit 1; }
+}
+mkdir -p "$TMP/config/helpers"
+seq 1 200 > "$TMP/config/helpers/moved.py"
+echo "old" > "$TMP/config/gone.yaml"
+sleep 1
+run
+merge_backup
+GITOPS_MODE=sync run
+status | grep -q "^success:synced" \
+  || { echo "FAIL: merged backup with new files reported = $(status)"; exit 1; }
+[ -z "$(git -C "$TMP/config" status --porcelain)" ] \
+  || { echo "FAIL: drift left after syncing the merged backup"; exit 1; }
+assert_settled "new files"
+
+mkdir -p "$TMP/config/client"
+{ seq 1 200; echo "edited"; } > "$TMP/config/client/moved.py"
+rm "$TMP/config/helpers/moved.py" "$TMP/config/gone.yaml"
+echo "brand new" > "$TMP/config/brand_new.yaml"
+sleep 1
+run
+merge_backup
+warnings=$(grep -c "stash_conflict" "$TMP/data/gitops_backup.log" || true)
+GITOPS_MODE=sync run
+status | grep -q "^success:synced" \
+  || { echo "FAIL: merged backup with a rename reported = $(status)"; exit 1; }
+[ "$(grep -c "stash_conflict" "$TMP/data/gitops_backup.log" || true)" = "$warnings" ] \
+  || { echo "FAIL: false stash_conflict logged for a merged rename"; exit 1; }
+[ -f "$TMP/config/client/moved.py" ] || { echo "FAIL: moved file missing after a merged rename"; exit 1; }
+[ ! -e "$TMP/config/helpers/moved.py" ] || { echo "FAIL: old path back after a merged rename"; exit 1; }
+[ ! -e "$TMP/config/gone.yaml" ] || { echo "FAIL: deleted file back after a merged backup"; exit 1; }
+grep -q "^brand new$" "$TMP/config/brand_new.yaml" || { echo "FAIL: new file wrong after a merged backup"; exit 1; }
+[ -z "$(git -C "$TMP/config" status --porcelain)" ] \
+  || { echo "FAIL: drift left after syncing a merged rename"; exit 1; }
+assert_settled "rename"
+
+# 3b-2. A new file edited between the backup and the merge really differs from
+#       upstream. The edit must survive and be reported; other drift in the
+#       same stash must survive too.
+echo "v1" > "$TMP/config/window.yaml"
+sleep 1
+run
+merge_backup
+echo "v2 live edit" > "$TMP/config/window.yaml"
+echo "unrelated" > "$TMP/config/unrelated.yaml"
+echo "tracked drift" > "$TMP/config/brand_new.yaml"
+GITOPS_MODE=sync run
+status | grep -q "^warning:stash_conflict" \
+  || { echo "FAIL: edited new file not reported = $(status)"; exit 1; }
+grep -q "^v2 live edit$" "$TMP/config/window.yaml" \
+  || { echo "FAIL: live edit lost on an edited new file"; exit 1; }
+grep -q "^unrelated$" "$TMP/config/unrelated.yaml" \
+  || { echo "FAIL: unrelated new file lost"; exit 1; }
+grep -q "^tracked drift$" "$TMP/config/brand_new.yaml" \
+  || { echo "FAIL: tracked drift lost"; exit 1; }
+assert_settled "edited new file"
+sleep 1
+run
+merge_backup
+GITOPS_MODE=sync run
+status | grep -q "^success:synced" || { echo "FAIL: not settled after 3b-2 = $(status)"; exit 1; }
+
+# 3b-3. A live file that cannot be restored stays in the stash: dropping it
+#       would lose the only copy. Make its restore fail with a git wrapper.
+echo "v1" > "$TMP/config/stuck.yaml"
+sleep 1
+run
+merge_backup
+echo "v2 only copy" > "$TMP/config/stuck.yaml"
+mkdir -p "$TMP/gitshim"
+cat > "$TMP/gitshim/git" <<EOF
+#!/bin/sh
+case "\$*" in *checkout*"-- stuck.yaml") echo "simulated failure" >&2; exit 1 ;; esac
+exec "$(command -v git)" "\$@"
+EOF
+chmod +x "$TMP/gitshim/git"
+PATH="$TMP/gitshim:$PATH" GITOPS_MODE=sync run
+status | grep -q "^warning:stash_conflict:could not restore" \
+  || { echo "FAIL: unrestored file not reported = $(status)"; exit 1; }
+[ "$(git -C "$TMP/config" show 'stash@{0}^3:stuck.yaml')" = "v2 only copy" ] \
+  || { echo "FAIL: stash does not hold the unrestored file"; exit 1; }
+[ -z "$(git -C "$TMP/config" ls-files -u)" ] \
+  || { echo "FAIL: unmerged entries after an unrestored file"; exit 1; }
+git -C "$TMP/config" stash clear
+[ -z "$(git -C "$TMP/config" status --porcelain)" ] \
+  || { echo "FAIL: test setup, tree not clean after 3b-3"; exit 1; }
+
 # 3c. Stash conflict: upstream and the live config both changed the same file
 #     (e.g. a HACS update on the box while a PR touched it). The run must keep
 #     the live version, leave no unmerged index entries, and the next run must
