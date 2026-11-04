@@ -425,6 +425,54 @@ cleanup_branch() {
     fi
 }
 
+reconcile_stash() { # stash-commit
+    # `git stash pop` failed and kept the entry. That usually means nothing is
+    # wrong: a merged backup PR brought back the very files that were stashed,
+    # so the untracked ones "already exist" and a moved file looks like a
+    # rename/delete conflict. Settle what pop left, path by path, with the live
+    # (stashed) version winning, and set STASH_DIVERGED when a live file really
+    # differs from what upstream has. Files pop merged cleanly are left alone.
+    # Returns non-zero if a live file could not be restored: the caller must
+    # then keep the stash, the only copy left.
+    local stash="$1" untracked="" path src blob head entry previous=""
+    STASH_DIVERGED=false
+    git rev-parse -q --verify "${stash}^3" >/dev/null && untracked="${stash}^3"
+
+    # Paths from ls-files, not git diff: diff refreshes the index as it exits,
+    # and that lock makes the checkout below fail while this loop reads its output.
+    # Each unmerged path has one line per stage.
+    while IFS= read -r -d '' entry; do
+        path="${entry#*$'\t'}"
+        [ "$path" != "$previous" ] || continue
+        previous="$path"
+        src=""
+        if git cat-file -e "${stash}:${path}" 2>/dev/null; then
+            src="$stash"
+        elif [ -n "$untracked" ] && git cat-file -e "${untracked}:${path}" 2>/dev/null; then
+            src="$untracked"
+        fi
+        head=$(git rev-parse -q --verify "HEAD:${path}" 2>/dev/null || true)
+        if [ -z "$src" ]; then
+            # Deleted on the box
+            [ -z "$head" ] || STASH_DIVERGED=true
+            rm -f -- "$path" || return 1
+        else
+            blob=$(git rev-parse "${src}:${path}") || return 1
+            [ "$blob" = "$head" ] || STASH_DIVERGED=true
+            git --literal-pathspecs checkout -q "$src" -- "$path" || return 1
+        fi
+    done < <(git ls-files -u -z)
+
+    [ -n "$untracked" ] || return 0
+    while IFS= read -r -d '' path; do
+        blob=$(git rev-parse "${untracked}:${path}") || return 1
+        head=$(git rev-parse -q --verify "HEAD:${path}" 2>/dev/null || true)
+        [ "$blob" != "$head" ] || continue
+        [ -z "$head" ] || STASH_DIVERGED=true
+        git --literal-pathspecs checkout -q "$untracked" -- "$path" || return 1
+    done < <(git ls-tree -r -z --name-only "$untracked")
+}
+
 revert_commit() {
     # Opens a PR that reverts REVERT_SHA on the base branch. Works in a
     # separate worktree, so the live /config is never touched.
@@ -599,10 +647,11 @@ main() {
     fi
 
     # 1–2. Stash local drift, sync upstream (merged PRs flow back here)
-    local stashed=false
+    local stashed=false stash_sha=""
     if [ -n "$(git status --porcelain)" ]; then
         git stash -q --include-untracked
         stashed=true
+        stash_sha=$(git rev-parse refs/stash)
     fi
     local pre_sync post_sync
     pre_sync=$(git rev-parse HEAD)
@@ -615,16 +664,25 @@ main() {
     fi
     post_sync=$(git rev-parse HEAD)
     # 3. Re-apply drift
-    local conflict=false
+    local conflict=false conflict_detail="kept live config where conflicting"
     if [ "$stashed" = true ] && ! git stash pop -q; then
-        git checkout -q --theirs . 2>/dev/null || true
-        # checkout --theirs only rewrites the files: the index still holds the
-        # conflict, which blocks the next run's stash. Unstage everything so
-        # the kept live files are plain drift for the backup below.
-        git reset -q
-        git stash drop -q 2>/dev/null || true
-        conflict=true
-        log "⚠ warning:stash_conflict — kept live config where conflicting"
+        if reconcile_stash "$stash_sha"; then
+            # Unstage everything: an unmerged index blocks the next run's stash,
+            # and the kept live files must be plain drift for the backup below.
+            git reset -q
+            git stash drop -q 2>/dev/null || true
+            if [ "$STASH_DIVERGED" = true ]; then
+                conflict=true
+                log "⚠ warning:stash_conflict — kept live config where conflicting"
+            else
+                log "Stash pop failed, but no live file differs from upstream; no conflict"
+            fi
+        else
+            git reset -q 2>/dev/null || true
+            conflict=true
+            conflict_detail="could not restore every live file, see git stash list"
+            log "⚠ warning:stash_conflict — ${conflict_detail} (${stash_sha:0:7})"
+        fi
     fi
 
     # 3b. Upstream advanced (a merged PR came down) → apply it to the running HA.
@@ -640,7 +698,7 @@ main() {
     untrack_secrets
 
     if [ "$conflict" = true ]; then
-        write_status warning stash_conflict "kept live config where conflicting"
+        write_status warning stash_conflict "$conflict_detail"
     fi
 
     if [ "$GITOPS_MODE" = "sync" ]; then
