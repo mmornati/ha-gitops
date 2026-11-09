@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.3
+
+- Fix: a backup touching a few thousand files (for example a removed or
+  updated integration such as HACS) pushed its branch but never opened a PR,
+  with `jq: Argument list too long` and `warning:branch_pushed` on every run.
+  The PR body was passed to `jq` and `curl` as a command-line argument, and
+  Linux caps a single argument at 128 KiB. Payloads now go through stdin.
+- The PR description lists at most about 60,000 characters of files (GitHub
+  rejects bodies over 65,536) and ends with "…and N more files" when the list
+  is cut. The PR diff still has every file.
+
 ## 0.4.2
 
 - Fix: a merged backup PR that added, renamed or deleted a file raised a false
