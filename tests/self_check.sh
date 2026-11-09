@@ -386,5 +386,49 @@ classify() {
 [ "$(classify README.md)" = "none" ] || { echo "FAIL: classify README"; exit 1; }
 [ "$(classify themes/dark.yaml)" = "frontend/reload_themes" ] || { echo "FAIL: classify themes"; exit 1; }
 
+# 13. A backup that touches thousands of files (an integration removed or
+#     updated) still opens its PR. The body used to go through argv, and a
+#     ~200 KB file list failed with "jq: Argument list too long".
+big="$TMP/big"
+git init -q -b main "$big"
+mkdir -p "$big/custom_components/hacs/frontend"
+for i in $(seq 1 3000); do
+  echo "$i" > "$big/custom_components/hacs/frontend/chunk.$i.long-hashed-name.js.gz"
+done
+git -C "$big" add -A
+git -C "$big" -c user.name=T -c user.email=t@localhost commit -q -m base
+git -C "$big" rm -rq custom_components/hacs
+echo "x: 1" > "$big/automations.yaml"
+git -C "$big" add -A
+git -C "$big" -c user.name=T -c user.email=t@localhost commit -q -m drift
+mkdir -p "$TMP/curlbin"
+printf '#!/bin/sh\ncat > "%s/posted.json"\necho '"'"'{"html_url":"https://example/pr/1","number":1}'"'"'\n' \
+  "$TMP" > "$TMP/curlbin/curl"
+chmod +x "$TMP/curlbin/curl"
+source_run() { # shell code, run in $big with the engine sourced
+  (cd "$big" && PATH="$TMP/curlbin:$PATH" GITOPS_SOURCE_ONLY=1 \
+    OPTIONS="$TMP/data/options.json" CONFIG_DIR="$TMP/config" DATA_DIR="$TMP/data" \
+    bash -c ". '$SCRIPT'; $1")
+}
+# shellcheck disable=SC2016 # expanded by the inner bash
+pr_out=$(source_run 'create_pull_request auto-backup/big "chore: big" "$(pr_body HEAD~1 HEAD)"')
+[ "$pr_out" = "$(printf 'https://example/pr/1\t1')" ] \
+  || { echo "FAIL: big PR not created (got: $pr_out)"; exit 1; }
+blen=$(jq -r '.body | length' "$TMP/posted.json")
+[ "$blen" -le 65536 ] || { echo "FAIL: PR body is $blen chars, over the GitHub limit"; exit 1; }
+posted_body=$(jq -r .body "$TMP/posted.json")
+grep -q "more files, not listed" <<< "$posted_body" \
+  || { echo "FAIL: truncated PR body has no 'more files' note"; exit 1; }
+# shellcheck disable=SC2016 # expanded by the inner bash
+grep -qF '`automations.yaml` (added)' <<< "$posted_body" \
+  || { echo "FAIL: big PR body dropped the automations group"; exit 1; }
+[ "$(jq -r .head "$TMP/posted.json")" = "auto-backup/big" ] || { echo "FAIL: big PR head"; exit 1; }
+# shellcheck disable=SC2016 # expanded by the inner bash
+source_run 'update_pull_request 1 "chore: big" "$(pr_body HEAD~1 HEAD)"'
+[ "$(jq -r .title "$TMP/posted.json")" = "chore: big" ] || { echo "FAIL: big PR update"; exit 1; }
+if grep -q "more files" <<< "$(source_run 'pr_body HEAD~1 HEAD~1')"; then
+  echo "FAIL: empty diff says files were skipped"; exit 1
+fi
+
 echo "OK: all self-checks passed"
 

@@ -93,21 +93,29 @@ rotate_log() {
 
 api_call() { # method path [json-body]
     local method="$1" path="$2" body="${3:-}"
-    curl -sf --max-time 20 -X "$method" \
-        -H "Authorization: token ${GITHUB_TOKEN}" \
-        -H "Accept: application/vnd.github.v3+json" \
-        ${body:+-d "$body"} \
-        "${API}${path}"
+    # The JSON body goes through stdin, not argv: Linux caps one argument at
+    # 128 KiB, which a PR body listing a few thousand files goes over.
+    if [ -n "$body" ]; then
+        printf '%s' "$body" | curl -sf --max-time 20 -X "$method" \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            --data-binary @- "${API}${path}"
+    else
+        curl -sf --max-time 20 -X "$method" \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "${API}${path}"
+    fi
 }
 
 ha_call() { # method path [json-body] — Home Assistant Core API via the Supervisor
     [ -n "${SUPERVISOR_TOKEN:-}" ] || return 1
     local body="${3:-}"
     [ -n "$body" ] || body='{}'
-    curl -sf --max-time 120 -X "$1" \
+    printf '%s' "$body" | curl -sf --max-time 120 -X "$1" \
         -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
         -H "Content-Type: application/json" \
-        -d "$body" "${HA_API}$2"
+        --data-binary @- "${HA_API}$2"
 }
 
 ha_event() { # name json-data — fires ha_gitops_<name> on the HA event bus
@@ -371,6 +379,8 @@ find_open_pr() {
     fi
 }
 
+PR_BODY_MAX=${PR_BODY_MAX:-60000} # GitHub rejects PR bodies over 65536 chars
+
 pr_body() { # base head — markdown summary of the files a PR changes
     local base="$1" head="$2" st path group
     echo "Automated Home Assistant config backup, opened by the HA GitOps app."
@@ -389,24 +399,34 @@ pr_body() { # base head — markdown summary of the files a PR changes
             *)                              group="Other" ;;
         esac
         printf '%s\t%s\t%s\n' "$group" "$st" "$path"
-    done | sort | awk -F'\t' '
-        $1 != g { g = $1; printf "\n### %s\n\n", g }
-        { s = ($2 == "A") ? "added" : ($2 == "D") ? "deleted" : "modified";
-          printf "- `%s` (%s)\n", $3, s }'
+    done | sort | awk -F'\t' -v max="$PR_BODY_MAX" '
+        # Stop listing once the body would pass max chars (a big integration
+        # update touches thousands of files); the PR diff still has them all.
+        skipped { skipped++; next }
+        {
+            s = ($2 == "A") ? "added" : ($2 == "D") ? "deleted" : "modified"
+            out = ($1 != g) ? sprintf("\n### %s\n\n", $1) : ""
+            out = out sprintf("- `%s` (%s)\n", $3, s)
+            if (used + length(out) > max - 200) { skipped = 1; next }
+            g = $1; used += length(out); printf "%s", out
+        }
+        END { if (skipped) printf "\n…and %d more files, not listed here to keep this description under the GitHub limit. See the Files changed tab.\n", skipped }'
 }
 
 create_pull_request() {
     local branch="$1" title="$2" body="$3"
     local payload
-    payload=$(jq -n --arg t "$title" --arg b "$body" \
+    # The body goes through stdin: as an argument it can pass the 128 KiB
+    # per-argument limit ("jq: Argument list too long").
+    payload=$(printf '%s' "$body" | jq -Rs --arg t "$title" \
         --arg h "$branch" --arg base "$BASE_BRANCH" \
-        '{title:$t, body:$b, head:$h, base:$base}')
+        '{title:$t, body:., head:$h, base:$base}')
     api_call POST /pulls "$payload" | jq -r '[.html_url, (.number|tostring)] | @tsv'
 }
 
 update_pull_request() { # number title body
     local payload
-    payload=$(jq -n --arg t "$2" --arg b "$3" '{title:$t, body:$b}')
+    payload=$(printf '%s' "$3" | jq -Rs --arg t "$2" '{title:$t, body:.}')
     api_call PATCH "/pulls/$1" "$payload" >/dev/null
 }
 
