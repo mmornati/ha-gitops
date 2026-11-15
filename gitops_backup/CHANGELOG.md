@@ -49,6 +49,8 @@ Security
   backup PR is taken out of it by the next backup: the scan now covers
   everything that differs from the base branch. It stays in that branch's
   history, so rotate the secret.
+- A file renamed and edited in the same change is scanned too (git reported
+  it as a rename, which the scan skipped).
 
 New
 

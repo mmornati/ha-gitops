@@ -412,7 +412,9 @@ scan_staged_for_secrets() {
         against=("refs/heads/${BASE_BRANCH}")
     fi
     out=$(mktemp)
-    if ! git diff --cached --name-only --diff-filter=AM -z ${against[@]+"${against[@]}"} \
+    # --no-renames: a file renamed and edited at once must count as added,
+    # not as a rename the A/M filter would skip.
+    if ! git diff --cached --no-renames --name-only --diff-filter=AM -z ${against[@]+"${against[@]}"} \
         | python3 "${HERE}/secret_scan.py" > "$out"; then
         rm -f "$out"
         log "❌ Secret scan could not run; not backing up"

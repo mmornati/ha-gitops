@@ -565,7 +565,7 @@ calls() { grep -c "$1" "$BOX/calls.log" || true; }
 # 14. A dry run pulls merged changes without applying them. The next real run
 #     must still apply them, once.
 newbox apply
-devpush automations.yaml "[{alias: merged}]"
+devpush automations.yaml "[{alias: merged, description: long enough for git to still call an edited copy a rename}]"
 DRY_RUN_OVERRIDE=true GITOPS_MODE=sync brun
 grep -q merged "$BOX/config/automations.yaml" || { echo "FAIL: dry run did not pull"; exit 1; }
 [ "$(calls services/automation/reload)" = 0 ] || { echo "FAIL: dry run applied changes"; exit 1; }
@@ -585,6 +585,16 @@ git -C "$BOX/config" symbolic-ref HEAD refs/heads/auto-backup/killed
 GITOPS_MODE=sync brun
 [ "$(git -C "$BOX/config" symbolic-ref HEAD)" = "refs/heads/main" ] \
   || { echo "FAIL: HEAD left on a backup branch"; exit 1; }
+
+# 14c. A file renamed and given a secret in the same change is still scanned
+#      (git reports it as a rename, which an added/modified filter skips).
+mv "$BOX/config/automations.yaml" "$BOX/config/renamed.yaml"
+echo "password: abcdefgh1234" >> "$BOX/config/renamed.yaml"
+brun
+[ "$(bstatus '.held[0]')" = "renamed.yaml" ] || { echo "FAIL: renamed file with a secret not held = $(bstatus .held)"; exit 1; }
+if grep -q "^renamed.yaml$" <<< "$(ogit ls-tree -r --name-only "$(cut -f1 "$BOX/data/open_pr")")"; then
+  echo "FAIL: a renamed file with a secret was pushed"; exit 1
+fi
 
 # 15. on_invalid_config: revert_pr. Pulled changes that fail the config check
 #     are not applied, are reported once, and get a PR that reverts them.
