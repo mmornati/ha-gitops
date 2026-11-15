@@ -1,0 +1,838 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-15T21:20:56Z",
+  "title": "Design System: HA GitOps",
+  "extensions": {
+    "colorMeta": {
+      "strip": {
+        "role": "primary",
+        "displayName": "Strip Paper",
+        "canonical": "#fbfaf4",
+        "tonalRamp": [
+          "#0c0b08",
+          "#262521",
+          "#43423d",
+          "#62615c",
+          "#83827d",
+          "#a6a5a0",
+          "#cac9c3",
+          "#f0efe9"
+        ]
+      },
+      "strip-ink": {
+        "role": "primary",
+        "displayName": "Strip Ink",
+        "canonical": "#1a211f",
+        "tonalRamp": [
+          "#070d0b",
+          "#202725",
+          "#3c4442",
+          "#5b6361",
+          "#7c8582",
+          "#9ea7a5",
+          "#c2ccc9",
+          "#e7f1ee"
+        ]
+      },
+      "strip-muted": {
+        "role": "primary",
+        "displayName": "Strip Muted",
+        "canonical": "#5a635d",
+        "tonalRamp": [
+          "#060d09",
+          "#1f2722",
+          "#3c443f",
+          "#5b645e",
+          "#7c857f",
+          "#9ea8a1",
+          "#c2ccc5",
+          "#e7f2ea"
+        ]
+      },
+      "strip-rule": {
+        "role": "primary",
+        "displayName": "Strip Rule",
+        "canonical": "#dcd9cb",
+        "tonalRamp": [
+          "#0d0b03",
+          "#28251b",
+          "#454237",
+          "#646155",
+          "#858376",
+          "#a8a598",
+          "#ccc9bc",
+          "#f2efe1"
+        ]
+      },
+      "fresh": {
+        "role": "secondary",
+        "displayName": "Fresh Amber",
+        "canonical": "#e5a31c",
+        "tonalRamp": [
+          "#130900",
+          "#342100",
+          "#583c04",
+          "#805906",
+          "#aa7709",
+          "#d7970b",
+          "#ffbb41",
+          "#feecd1"
+        ]
+      },
+      "fresh-ink": {
+        "role": "secondary",
+        "displayName": "Fresh Ink",
+        "canonical": "#2a1c00",
+        "tonalRamp": [
+          "#130900",
+          "#312204",
+          "#4f4022",
+          "#6f5f41",
+          "#918061",
+          "#b4a383",
+          "#d9c7a6",
+          "#ffecca"
+        ]
+      },
+      "review": {
+        "role": "secondary",
+        "displayName": "Review Blue",
+        "canonical": "#4a8be0",
+        "tonalRamp": [
+          "#000924",
+          "#002351",
+          "#004084",
+          "#1d60b1",
+          "#4283d7",
+          "#65a7fe",
+          "#a7ccfe",
+          "#e6effd"
+        ]
+      },
+      "review-ink": {
+        "role": "secondary",
+        "displayName": "Review Ink",
+        "canonical": "#041b38",
+        "tonalRamp": [
+          "#000a23",
+          "#0d2543",
+          "#2a4363",
+          "#496385",
+          "#6984a8",
+          "#8ba7cd",
+          "#aeccf3",
+          "#e4f0ff"
+        ]
+      },
+      "held": {
+        "role": "secondary",
+        "displayName": "Held Red",
+        "canonical": "#e5695e",
+        "tonalRamp": [
+          "#210000",
+          "#4d0003",
+          "#80020a",
+          "#a8312b",
+          "#cf564c",
+          "#f87a6e",
+          "#feb3aa",
+          "#ffe9e6"
+        ]
+      },
+      "held-ink": {
+        "role": "secondary",
+        "displayName": "Held Ink",
+        "canonical": "#2b0703",
+        "tonalRamp": [
+          "#1f0000",
+          "#3e1811",
+          "#5e352d",
+          "#80544b",
+          "#a4756b",
+          "#c9978d",
+          "#eebbb0",
+          "#fdeae6"
+        ]
+      },
+      "landed": {
+        "role": "secondary",
+        "displayName": "Landed Green",
+        "canonical": "#33a06d",
+        "tonalRamp": [
+          "#001006",
+          "#002e1a",
+          "#044f31",
+          "#017449",
+          "#299966",
+          "#54bd88",
+          "#7be2ab",
+          "#c5fedd"
+        ]
+      },
+      "landed-ink": {
+        "role": "secondary",
+        "displayName": "Landed Ink",
+        "canonical": "#03231a",
+        "tonalRamp": [
+          "#001009",
+          "#0c2c22",
+          "#2a493f",
+          "#49695e",
+          "#6a8b7f",
+          "#8caea1",
+          "#afd2c5",
+          "#d4f8ea"
+        ]
+      },
+      "add": {
+        "role": "tertiary",
+        "displayName": "Diff Add",
+        "canonical": "#d3ecd0",
+        "tonalRamp": [
+          "#011001",
+          "#172b16",
+          "#344832",
+          "#526850",
+          "#738a70",
+          "#95ad92",
+          "#b9d1b6",
+          "#def7db"
+        ]
+      },
+      "del": {
+        "role": "tertiary",
+        "displayName": "Diff Delete",
+        "canonical": "#f6d6d0",
+        "tonalRamp": [
+          "#180503",
+          "#351e1a",
+          "#543b36",
+          "#755a55",
+          "#977b75",
+          "#bb9d97",
+          "#e0c1bb",
+          "#ffe9e5"
+        ]
+      },
+      "hunk": {
+        "role": "tertiary",
+        "displayName": "Diff Hunk",
+        "canonical": "#e9e6da",
+        "tonalRamp": [
+          "#0d0b04",
+          "#27251c",
+          "#454238",
+          "#646157",
+          "#858278",
+          "#a8a59a",
+          "#ccc9be",
+          "#f2efe3"
+        ]
+      },
+      "bay": {
+        "role": "neutral",
+        "displayName": "Bay Metal",
+        "canonical": "#d7ddd8",
+        "tonalRamp": [
+          "#080c09",
+          "#222623",
+          "#3f433f",
+          "#5e635e",
+          "#7e847f",
+          "#a1a7a2",
+          "#c5cbc6",
+          "#eaf0eb"
+        ]
+      },
+      "rail": {
+        "role": "neutral",
+        "displayName": "Rail",
+        "canonical": "#c6cec8",
+        "tonalRamp": [
+          "#070d09",
+          "#212722",
+          "#3d443f",
+          "#5c635e",
+          "#7d857f",
+          "#a0a7a2",
+          "#c4cbc6",
+          "#e9f1eb"
+        ]
+      },
+      "rail-edge": {
+        "role": "neutral",
+        "displayName": "Rail Edge",
+        "canonical": "#a9b4ad",
+        "tonalRamp": [
+          "#060d09",
+          "#1f2722",
+          "#3b453f",
+          "#5a645e",
+          "#7b857f",
+          "#9da8a1",
+          "#c1ccc5",
+          "#e6f2ea"
+        ]
+      },
+      "on-bay": {
+        "role": "neutral",
+        "displayName": "On Bay",
+        "canonical": "#17201d",
+        "tonalRamp": [
+          "#060d0a",
+          "#1e2724",
+          "#3b4541",
+          "#596460",
+          "#7a8581",
+          "#9da8a4",
+          "#c0ccc8",
+          "#e6f2ed"
+        ]
+      },
+      "on-bay-muted": {
+        "role": "neutral",
+        "displayName": "On Bay Muted",
+        "canonical": "#44504b",
+        "tonalRamp": [
+          "#050e0a",
+          "#1d2823",
+          "#394540",
+          "#58655f",
+          "#798680",
+          "#9ba9a3",
+          "#bfcdc7",
+          "#e4f2ec"
+        ]
+      },
+      "focus": {
+        "role": "neutral",
+        "displayName": "Focus",
+        "canonical": "#0b4fb3",
+        "tonalRamp": [
+          "#00072a",
+          "#002058",
+          "#003b90",
+          "#1a5bc0",
+          "#3e7fe7",
+          "#6da5fe",
+          "#abcbfd",
+          "#e5efff"
+        ]
+      },
+      "strip-dark": {
+        "role": "primary",
+        "displayName": "Strip Paper (dark)",
+        "canonical": "#ebe6d8",
+        "tonalRamp": [
+          "#0e0b03",
+          "#29251a",
+          "#464236",
+          "#656155",
+          "#878275",
+          "#aaa598",
+          "#cec9bb",
+          "#f3eee0"
+        ]
+      },
+      "strip-ink-dark": {
+        "role": "primary",
+        "displayName": "Strip Ink (dark)",
+        "canonical": "#171e1c",
+        "tonalRamp": [
+          "#070d0b",
+          "#202725",
+          "#3c4442",
+          "#5b6361",
+          "#7c8582",
+          "#9ea7a5",
+          "#c2ccc9",
+          "#e7f1ee"
+        ]
+      },
+      "strip-muted-dark": {
+        "role": "primary",
+        "displayName": "Strip Muted (dark)",
+        "canonical": "#555e58",
+        "tonalRamp": [
+          "#060d09",
+          "#1f2722",
+          "#3c443f",
+          "#5b645e",
+          "#7c857f",
+          "#9ea8a1",
+          "#c2ccc5",
+          "#e7f2ea"
+        ]
+      },
+      "strip-rule-dark": {
+        "role": "primary",
+        "displayName": "Strip Rule (dark)",
+        "canonical": "#cdc6b3",
+        "tonalRamp": [
+          "#100b01",
+          "#2a2516",
+          "#474232",
+          "#676150",
+          "#888270",
+          "#aba592",
+          "#d0c9b6",
+          "#f5eedb"
+        ]
+      },
+      "fresh-dark": {
+        "role": "secondary",
+        "displayName": "Fresh Amber (dark)",
+        "canonical": "#f0b23a",
+        "tonalRamp": [
+          "#130900",
+          "#332100",
+          "#573d05",
+          "#7f5a07",
+          "#a9780a",
+          "#d5980c",
+          "#fcbd48",
+          "#feecce"
+        ]
+      },
+      "review-dark": {
+        "role": "secondary",
+        "displayName": "Review Blue (dark)",
+        "canonical": "#6aa6f0",
+        "tonalRamp": [
+          "#000a22",
+          "#00244d",
+          "#014180",
+          "#2762a6",
+          "#4984cc",
+          "#6ca8f2",
+          "#a5ccfe",
+          "#e5f0fd"
+        ]
+      },
+      "held-dark": {
+        "role": "secondary",
+        "displayName": "Held Red (dark)",
+        "canonical": "#ee7468",
+        "tonalRamp": [
+          "#200000",
+          "#4d0002",
+          "#800209",
+          "#a7332c",
+          "#ce574d",
+          "#f67b6f",
+          "#feb3aa",
+          "#ffe9e5"
+        ]
+      },
+      "landed-dark": {
+        "role": "secondary",
+        "displayName": "Landed Green (dark)",
+        "canonical": "#4dbb84",
+        "tonalRamp": [
+          "#001006",
+          "#002e19",
+          "#034f30",
+          "#007448",
+          "#229964",
+          "#50bd86",
+          "#77e3aa",
+          "#c5fedc"
+        ]
+      },
+      "add-dark": {
+        "role": "tertiary",
+        "displayName": "Diff Add (dark)",
+        "canonical": "#cfe6cb",
+        "tonalRamp": [
+          "#020f01",
+          "#192a16",
+          "#354832",
+          "#546850",
+          "#748971",
+          "#97ac93",
+          "#bad1b6",
+          "#dff6db"
+        ]
+      },
+      "del-dark": {
+        "role": "tertiary",
+        "displayName": "Diff Delete (dark)",
+        "canonical": "#f1cfc8",
+        "tonalRamp": [
+          "#190503",
+          "#361e19",
+          "#553a35",
+          "#765953",
+          "#997a74",
+          "#bd9c96",
+          "#e2c0b9",
+          "#fee9e5"
+        ]
+      },
+      "hunk-dark": {
+        "role": "tertiary",
+        "displayName": "Diff Hunk (dark)",
+        "canonical": "#ddd7c6",
+        "tonalRamp": [
+          "#0f0b02",
+          "#292518",
+          "#474234",
+          "#666152",
+          "#888272",
+          "#aba595",
+          "#cfc9b8",
+          "#f4eedd"
+        ]
+      },
+      "bay-dark": {
+        "role": "neutral",
+        "displayName": "Bay Metal (dark)",
+        "canonical": "#121a18",
+        "tonalRamp": [
+          "#060d0b",
+          "#1f2725",
+          "#3b4442",
+          "#5a6461",
+          "#7b8582",
+          "#9da8a5",
+          "#c1ccc9",
+          "#e6f1ee"
+        ]
+      },
+      "rail-dark": {
+        "role": "neutral",
+        "displayName": "Rail (dark)",
+        "canonical": "#1b2624",
+        "tonalRamp": [
+          "#040d0c",
+          "#1d2826",
+          "#394543",
+          "#586462",
+          "#788683",
+          "#9ba8a6",
+          "#bfcdca",
+          "#e4f2ef"
+        ]
+      },
+      "rail-edge-dark": {
+        "role": "neutral",
+        "displayName": "Rail Edge (dark)",
+        "canonical": "#2c3b38",
+        "tonalRamp": [
+          "#030e0c",
+          "#1a2826",
+          "#364643",
+          "#556562",
+          "#768783",
+          "#98a9a6",
+          "#bcceca",
+          "#e1f3ef"
+        ]
+      },
+      "on-bay-dark": {
+        "role": "neutral",
+        "displayName": "On Bay (dark)",
+        "canonical": "#e1e8e4",
+        "tonalRamp": [
+          "#080c0a",
+          "#212624",
+          "#3e4440",
+          "#5d635f",
+          "#7e8480",
+          "#a0a7a3",
+          "#c4cbc7",
+          "#e9f0ec"
+        ]
+      },
+      "on-bay-muted-dark": {
+        "role": "neutral",
+        "displayName": "On Bay Muted (dark)",
+        "canonical": "#98a8a2",
+        "tonalRamp": [
+          "#030e0a",
+          "#1b2824",
+          "#384641",
+          "#566560",
+          "#778681",
+          "#99a9a3",
+          "#bdcec7",
+          "#e2f3ed"
+        ]
+      },
+      "focus-dark": {
+        "role": "neutral",
+        "displayName": "Focus (dark)",
+        "canonical": "#f0b23a",
+        "tonalRamp": [
+          "#130900",
+          "#332100",
+          "#573d05",
+          "#7f5a07",
+          "#a9780a",
+          "#d5980c",
+          "#fcbd48",
+          "#feecce"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "summary": {
+        "displayName": "Summary",
+        "purpose": "The one sentence that says what is waiting; 21px at 560px and below."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "The question in a confirmation dialog."
+      },
+      "bay-title": {
+        "displayName": "Bay title",
+        "purpose": "Bay headings and the run log summary."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Attention sentences and dialog text."
+      },
+      "note": {
+        "displayName": "Note",
+        "purpose": "Last-run line, bay notes, counts."
+      },
+      "key": {
+        "displayName": "Key",
+        "purpose": "Every key label."
+      },
+      "field": {
+        "displayName": "Field",
+        "purpose": "The uppercase change word inside a strip's state field."
+      },
+      "commit": {
+        "displayName": "Commit",
+        "purpose": "The two commit ids on the head rule."
+      },
+      "path": {
+        "displayName": "Path",
+        "purpose": "File paths on strips."
+      },
+      "diff": {
+        "displayName": "Diff",
+        "purpose": "Opened diffs and the run log."
+      }
+    },
+    "shadows": [
+      {
+        "name": "strip",
+        "value": "0 1px 0 rgb(23 32 29 / .18), 0 3px 8px -3px rgb(23 32 29 / .35)",
+        "purpose": "Strips, attention strips and the primary key (light)."
+      },
+      {
+        "name": "strip-dark",
+        "value": "0 1px 0 rgb(0 0 0 / .5), 0 4px 10px -4px rgb(0 0 0 / .7)",
+        "purpose": "The same paper shadow in the dark scheme."
+      },
+      {
+        "name": "strip-open",
+        "value": "0 14px 28px -14px rgb(0 0 0 / .55)",
+        "purpose": "Added to the strip shadow while a strip's diff is open."
+      },
+      {
+        "name": "toast",
+        "value": "0 12px 30px -10px rgb(0 0 0 / .5)",
+        "purpose": "Added to the strip shadow on the toast."
+      },
+      {
+        "name": "dialog",
+        "value": "0 24px 60px -12px rgb(0 0 0 / .6)",
+        "purpose": "The confirmation dialog, over a rgb(8 14 12 / .6) backdrop."
+      },
+      {
+        "name": "switch-thumb",
+        "value": "0 1px 2px rgb(0 0 0 / .35)",
+        "purpose": "The switch thumb."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "The one easing, for every transition and the strip travel."
+      },
+      {
+        "name": "key",
+        "value": "150ms",
+        "purpose": "Key hover and press, strip row hover."
+      },
+      {
+        "name": "toggle",
+        "value": "200ms",
+        "purpose": "Switch, chevron turn, toast in and out."
+      },
+      {
+        "name": "unfold",
+        "value": "220ms",
+        "purpose": "A diff unfolding under its strip, clipped from the top."
+      },
+      {
+        "name": "travel",
+        "value": "250ms",
+        "purpose": "View transition moving a strip between bays; skipped above 80 files."
+      },
+      {
+        "name": "sweep",
+        "value": "1.4s infinite alternate",
+        "purpose": "The segment sweeping the head rule while a run is on; hidden under reduced motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "max-width: 560px"
+      },
+      {
+        "name": "two-bays",
+        "value": "min-width: 720px"
+      },
+      {
+        "name": "three-bays",
+        "value": "min-width: 1080px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Key",
+      "kind": "button",
+      "refersTo": "key",
+      "description": "Default rectangular key on the metal rail, for secondary actions in the key row or a bay.",
+      "html": "<button class=\"ds-key\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 4v11M7 11l5 5 5-5M5 20h14\"/></svg>Sync now</button>",
+      "css": ".ds-i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .ds-key { font: 600 14px/1 var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); min-height: 38px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--rail-edge, #a9b4ad); border-radius: 3px; background: var(--rail, #c6cec8); color: var(--on-bay, #17201d); cursor: pointer; transition: background .15s var(--ease, cubic-bezier(.16, 1, .3, 1)), transform .15s var(--ease, cubic-bezier(.16, 1, .3, 1)), border-color .15s var(--ease, cubic-bezier(.16, 1, .3, 1)); } .ds-key:hover { border-color: var(--on-bay-muted, #44504b); } .ds-key:active { transform: translateY(1px); } .ds-key:focus-visible { outline: 2px solid var(--focus, #0b4fb3); outline-offset: 2px; }"
+    },
+    {
+      "name": "Primary Key",
+      "kind": "button",
+      "refersTo": "key-primary",
+      "description": "Paper-coloured key with the strip shadow; one per rail, the action that bay is waiting for.",
+      "html": "<button class=\"ds-key ds-key-primary\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 20V9M7 13l5-5 5 5M5 4h14\"/></svg>Back up now</button>",
+      "css": ".ds-i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .ds-key { font: 600 14px/1 var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); min-height: 38px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--rail-edge, #a9b4ad); border-radius: 3px; background: var(--rail, #c6cec8); color: var(--on-bay, #17201d); cursor: pointer; transition: background .15s var(--ease, cubic-bezier(.16, 1, .3, 1)), transform .15s var(--ease, cubic-bezier(.16, 1, .3, 1)), border-color .15s var(--ease, cubic-bezier(.16, 1, .3, 1)); } .ds-key:hover { border-color: var(--on-bay-muted, #44504b); } .ds-key:active { transform: translateY(1px); } .ds-key:focus-visible { outline: 2px solid var(--focus, #0b4fb3); outline-offset: 2px; } .ds-key-primary { background: var(--strip, #fbfaf4); color: var(--strip-ink, #1a211f); border-color: var(--strip, #fbfaf4); box-shadow: var(--strip-shadow, 0 1px 0 rgb(23 32 29 / .18), 0 3px 8px -3px rgb(23 32 29 / .35)); }"
+    },
+    {
+      "name": "Danger Key",
+      "kind": "button",
+      "refersTo": "key-danger",
+      "description": "Solid held-red key; the confirm key of a destructive dialog.",
+      "html": "<button class=\"ds-key ds-key-danger\">Discard</button>",
+      "css": ".ds-key { font: 600 14px/1 var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); min-height: 38px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--rail-edge, #a9b4ad); border-radius: 3px; background: var(--rail, #c6cec8); color: var(--on-bay, #17201d); cursor: pointer; transition: background .15s var(--ease, cubic-bezier(.16, 1, .3, 1)), transform .15s var(--ease, cubic-bezier(.16, 1, .3, 1)), border-color .15s var(--ease, cubic-bezier(.16, 1, .3, 1)); } .ds-key:hover { border-color: var(--on-bay-muted, #44504b); } .ds-key:active { transform: translateY(1px); } .ds-key:focus-visible { outline: 2px solid var(--focus, #0b4fb3); outline-offset: 2px; } .ds-key-danger { background: var(--held, #e5695e); color: var(--held-ink, #2b0703); border-color: var(--held, #e5695e); }"
+    },
+    {
+      "name": "On-paper Key",
+      "kind": "button",
+      "refersTo": "key-onpaper",
+      "description": "Outlined key for use on paper: inside an attention strip, a landed strip, or as the dialog's Cancel.",
+      "html": "<div class=\"ds-paper\"><button class=\"ds-key ds-key-onpaper\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M8 5 3.5 9.5 8 14M3.5 9.5H14a6 6 0 0 1 0 12h-3\"/></svg>Revert…</button></div>",
+      "css": ".ds-i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .ds-key { font: 600 14px/1 var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); min-height: 38px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--rail-edge, #a9b4ad); border-radius: 3px; background: var(--rail, #c6cec8); color: var(--on-bay, #17201d); cursor: pointer; transition: background .15s var(--ease, cubic-bezier(.16, 1, .3, 1)), transform .15s var(--ease, cubic-bezier(.16, 1, .3, 1)), border-color .15s var(--ease, cubic-bezier(.16, 1, .3, 1)); } .ds-key:hover { border-color: var(--on-bay-muted, #44504b); } .ds-key:active { transform: translateY(1px); } .ds-key:focus-visible { outline: 2px solid var(--focus, #0b4fb3); outline-offset: 2px; } .ds-key-onpaper { background: transparent; color: var(--strip-ink, #1a211f); border-color: var(--strip-muted, #5a635d); min-height: 34px; } .ds-key-onpaper:focus-visible { outline-color: var(--strip-ink, #1a211f); } .ds-paper { display: inline-block; padding: 8px; background: var(--strip, #fbfaf4); border-radius: 3px; box-shadow: var(--strip-shadow, 0 1px 0 rgb(23 32 29 / .18), 0 3px 8px -3px rgb(23 32 29 / .35)); }"
+    },
+    {
+      "name": "Switch",
+      "kind": "input",
+      "refersTo": "switch-track",
+      "description": "Label and pill track for the two standing settings (automatic sync, apply merged changes).",
+      "html": "<button class=\"ds-switch\" role=\"switch\" aria-checked=\"true\"><span>Automatic sync</span><span class=\"ds-switch-track\"></span></button>",
+      "css": ".ds-switch { font: 500 14px/1 var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); min-height: 38px; display: inline-flex; align-items: center; gap: 10px; background: none; border: 0; color: var(--on-bay, #17201d); cursor: pointer; padding: 0 4px; } .ds-switch-track { width: 38px; height: 22px; border-radius: 11px; background: var(--rail-edge, #a9b4ad); position: relative; transition: background .2s var(--ease, cubic-bezier(.16, 1, .3, 1)); flex: none; } .ds-switch-track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--strip, #fbfaf4); box-shadow: 0 1px 2px rgb(0 0 0 / .35); transition: transform .2s var(--ease, cubic-bezier(.16, 1, .3, 1)); } .ds-switch[aria-checked='true'] .ds-switch-track { background: var(--landed, #33a06d); } .ds-switch[aria-checked='true'] .ds-switch-track::after { transform: translateX(16px); } .ds-switch:focus-visible { outline: 2px solid var(--focus, #0b4fb3); outline-offset: 2px; }"
+    },
+    {
+      "name": "Strip",
+      "kind": "custom",
+      "refersTo": "strip",
+      "description": "A changed file: state field, path, line counts, chevron. The whole row opens the diff in place.",
+      "html": "<div class=\"ds-strip\"><button class=\"ds-strip-row\" aria-expanded=\"false\"><span class=\"ds-field\">edit</span><span class=\"ds-path\"><span class=\"ds-path-dir\">packages/</span><span class=\"ds-path-name\">lights.yaml</span></span><span class=\"ds-delta\"><span class=\"ds-delta-a\">+12</span> <span class=\"ds-delta-d\">−3</span></span><svg class=\"ds-i ds-chev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m9 6 6 6-6 6\"/></svg></button></div>",
+      "css": ".ds-i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .ds-strip { background: var(--strip, #fbfaf4); color: var(--strip-ink, #1a211f); border-radius: 3px; box-shadow: var(--strip-shadow, 0 1px 0 rgb(23 32 29 / .18), 0 3px 8px -3px rgb(23 32 29 / .35)); font-family: var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); } .ds-strip-row { width: 100%; display: grid; grid-template-columns: 62px minmax(0, 1fr) auto auto; align-items: stretch; gap: 0 10px; border: 0; background: none; color: inherit; font: inherit; text-align: left; padding: 0; min-height: 42px; cursor: pointer; border-radius: 3px; transition: background .15s var(--ease, cubic-bezier(.16, 1, .3, 1)); } .ds-strip-row:hover { background: color-mix(in srgb, var(--strip-ink, #1a211f) 7%, transparent); } .ds-strip-row:focus-visible { outline: 2px solid var(--strip-ink, #1a211f); outline-offset: 2px; } .ds-field { display: grid; place-items: center; font: 700 11px/1 var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); letter-spacing: .05em; text-transform: uppercase; border-radius: 3px 0 0 3px; background: var(--fresh, #e5a31c); color: var(--fresh-ink, #2a1c00); } .ds-field-review { background: var(--review, #4a8be0); color: var(--review-ink, #041b38); } .ds-field-held { background: repeating-linear-gradient(135deg, var(--held, #e5695e) 0 6px, color-mix(in srgb, var(--held, #e5695e) 72%, #fff) 6px 12px); color: var(--held-ink, #2b0703); } .ds-path { align-self: center; font: 13px/1.35 var(--mono, ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace); overflow-wrap: anywhere; padding: 6px 0; min-width: 0; } .ds-path-dir { color: var(--strip-muted, #5a635d); } .ds-path-name { font-weight: 700; } .ds-delta { align-self: center; font: 600 12px var(--mono, ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace); white-space: nowrap; color: var(--strip-muted, #5a635d); } .ds-delta-a { color: #1c6b3a; } .ds-delta-d { color: #a02a1f; } .ds-chev { align-self: center; margin-right: 10px; color: var(--strip-muted, #5a635d); }"
+    },
+    {
+      "name": "Held Strip",
+      "kind": "custom",
+      "refersTo": "field-held",
+      "description": "A file held back as secret-like: hatched field, lock instead of line counts, content never shown.",
+      "html": "<div class=\"ds-strip\"><button class=\"ds-strip-row\" aria-expanded=\"false\"><span class=\"ds-field ds-field-held\">held</span><span class=\"ds-path\"><span class=\"ds-path-dir\"></span><span class=\"ds-path-name\">mqtt.yaml</span></span><span class=\"ds-delta\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"5\" y=\"11\" width=\"14\" height=\"9\" rx=\"1.5\"/><path d=\"M8 11V8a4 4 0 0 1 8 0v3\"/></svg></span><svg class=\"ds-i ds-chev\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m9 6 6 6-6 6\"/></svg></button></div>",
+      "css": ".ds-i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .ds-strip { background: var(--strip, #fbfaf4); color: var(--strip-ink, #1a211f); border-radius: 3px; box-shadow: var(--strip-shadow, 0 1px 0 rgb(23 32 29 / .18), 0 3px 8px -3px rgb(23 32 29 / .35)); font-family: var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); } .ds-strip-row { width: 100%; display: grid; grid-template-columns: 62px minmax(0, 1fr) auto auto; align-items: stretch; gap: 0 10px; border: 0; background: none; color: inherit; font: inherit; text-align: left; padding: 0; min-height: 42px; cursor: pointer; border-radius: 3px; transition: background .15s var(--ease, cubic-bezier(.16, 1, .3, 1)); } .ds-strip-row:hover { background: color-mix(in srgb, var(--strip-ink, #1a211f) 7%, transparent); } .ds-strip-row:focus-visible { outline: 2px solid var(--strip-ink, #1a211f); outline-offset: 2px; } .ds-field { display: grid; place-items: center; font: 700 11px/1 var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); letter-spacing: .05em; text-transform: uppercase; border-radius: 3px 0 0 3px; background: var(--fresh, #e5a31c); color: var(--fresh-ink, #2a1c00); } .ds-field-review { background: var(--review, #4a8be0); color: var(--review-ink, #041b38); } .ds-field-held { background: repeating-linear-gradient(135deg, var(--held, #e5695e) 0 6px, color-mix(in srgb, var(--held, #e5695e) 72%, #fff) 6px 12px); color: var(--held-ink, #2b0703); } .ds-path { align-self: center; font: 13px/1.35 var(--mono, ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace); overflow-wrap: anywhere; padding: 6px 0; min-width: 0; } .ds-path-dir { color: var(--strip-muted, #5a635d); } .ds-path-name { font-weight: 700; } .ds-delta { align-self: center; font: 600 12px var(--mono, ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace); white-space: nowrap; color: var(--strip-muted, #5a635d); } .ds-delta-a { color: #1c6b3a; } .ds-delta-d { color: #a02a1f; } .ds-chev { align-self: center; margin-right: 10px; color: var(--strip-muted, #5a635d); }"
+    },
+    {
+      "name": "Landed Strip",
+      "kind": "custom",
+      "refersTo": "field-landed",
+      "description": "A commit on the base branch: commit id in the green field, subject, author and age, and a revert key.",
+      "html": "<div class=\"ds-strip\"><div class=\"ds-landed-row\"><a class=\"ds-landed-field\" href=\"#\">2f52db0</a><span class=\"ds-what\"><b>Hold back secret-like content</b><span>admin · 2 hours ago · on the box</span></span><span class=\"ds-act\"><button class=\"ds-key ds-key-onpaper\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M8 5 3.5 9.5 8 14M3.5 9.5H14a6 6 0 0 1 0 12h-3\"/></svg>Revert…</button></span></div></div>",
+      "css": ".ds-i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .ds-key { font: 600 14px/1 var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); min-height: 38px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--rail-edge, #a9b4ad); border-radius: 3px; background: var(--rail, #c6cec8); color: var(--on-bay, #17201d); cursor: pointer; transition: background .15s var(--ease, cubic-bezier(.16, 1, .3, 1)), transform .15s var(--ease, cubic-bezier(.16, 1, .3, 1)), border-color .15s var(--ease, cubic-bezier(.16, 1, .3, 1)); } .ds-key:hover { border-color: var(--on-bay-muted, #44504b); } .ds-key:active { transform: translateY(1px); } .ds-key:focus-visible { outline: 2px solid var(--focus, #0b4fb3); outline-offset: 2px; } .ds-key-onpaper { background: transparent; color: var(--strip-ink, #1a211f); border-color: var(--strip-muted, #5a635d); min-height: 34px; } .ds-key-onpaper:focus-visible { outline-color: var(--strip-ink, #1a211f); } .ds-strip { background: var(--strip, #fbfaf4); color: var(--strip-ink, #1a211f); border-radius: 3px; box-shadow: var(--strip-shadow, 0 1px 0 rgb(23 32 29 / .18), 0 3px 8px -3px rgb(23 32 29 / .35)); font: 15px/1.5 var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); } .ds-landed-row { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; align-items: stretch; gap: 0 10px; min-height: 42px; } .ds-landed-field { display: grid; place-items: center; font: 600 12px var(--mono, ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace); border-radius: 3px 0 0 3px; background: var(--landed, #33a06d); color: var(--landed-ink, #03231a); text-decoration-thickness: 1px; text-underline-offset: 3px; } .ds-landed-field:focus-visible { outline: 2px solid var(--strip-ink, #1a211f); outline-offset: 2px; } .ds-what { align-self: center; padding: 6px 0; min-width: 0; } .ds-what b { display: block; font-weight: 600; overflow-wrap: anywhere; } .ds-what span { color: var(--strip-muted, #5a635d); font-size: 12.5px; } .ds-act { align-self: center; margin-right: 8px; }"
+    },
+    {
+      "name": "Attention Strip",
+      "kind": "custom",
+      "refersTo": "attention-strip",
+      "description": "Something that needs the administrator: a full-height tone flag, one sentence, at most a pair of on-paper keys.",
+      "html": "<div class=\"ds-attn\"><span class=\"ds-flag\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 4 2.8 19.5h18.4L12 4ZM12 10v4.5M12 17.2v.1\"/></svg>Restart</span><p>Merged changes only load when Home Assistant starts.</p><button class=\"ds-key ds-key-onpaper\"><svg class=\"ds-i\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5\"/></svg>Restart Home Assistant</button></div>",
+      "css": ".ds-i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .ds-key { font: 600 14px/1 var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); min-height: 38px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--rail-edge, #a9b4ad); border-radius: 3px; background: var(--rail, #c6cec8); color: var(--on-bay, #17201d); cursor: pointer; transition: background .15s var(--ease, cubic-bezier(.16, 1, .3, 1)), transform .15s var(--ease, cubic-bezier(.16, 1, .3, 1)), border-color .15s var(--ease, cubic-bezier(.16, 1, .3, 1)); } .ds-key:hover { border-color: var(--on-bay-muted, #44504b); } .ds-key:active { transform: translateY(1px); } .ds-key:focus-visible { outline: 2px solid var(--focus, #0b4fb3); outline-offset: 2px; } .ds-key-onpaper { background: transparent; color: var(--strip-ink, #1a211f); border-color: var(--strip-muted, #5a635d); min-height: 34px; } .ds-key-onpaper:focus-visible { outline-color: var(--strip-ink, #1a211f); } .ds-attn { display: grid; grid-template-columns: 104px minmax(0, 1fr) auto; align-items: center; gap: 0 14px; background: var(--strip, #fbfaf4); color: var(--strip-ink, #1a211f); border-radius: 3px; box-shadow: var(--strip-shadow, 0 1px 0 rgb(23 32 29 / .18), 0 3px 8px -3px rgb(23 32 29 / .35)); font: 15px/1.5 var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); } .ds-flag { display: flex; align-items: center; gap: 6px; align-self: stretch; padding: 0 12px; border-radius: 3px 0 0 3px; font-size: 12px; font-weight: 700; background: var(--fresh, #e5a31c); color: var(--fresh-ink, #2a1c00); } .ds-attn p { margin: 0; padding: 10px 0; min-width: 0; overflow-wrap: anywhere; } .ds-attn .ds-key { margin: 8px 10px 8px 0; }"
+    },
+    {
+      "name": "Head Rule",
+      "kind": "nav",
+      "refersTo": "wire-word",
+      "description": "The box commit and the GitHub commit joined by a line whose word and colour say whether they agree.",
+      "html": "<div class=\"ds-span\"><div class=\"ds-end\"><span class=\"ds-lbl\">The box</span><code>2f52db0</code></div><div class=\"ds-wire\"><b>in agreement</b></div><div class=\"ds-end ds-end-r\"><span class=\"ds-lbl\">GitHub · main</span><code><a href=\"#\">2f52db0</a></code></div></div>",
+      "css": ".ds-span { display: grid; grid-template-columns: auto minmax(40px, 1fr) auto; align-items: center; gap: 12px; padding: 12px 20px 11px; background: var(--bay, #d7ddd8); color: var(--on-bay, #17201d); border-bottom: 1px solid var(--rail-edge, #a9b4ad); font-family: var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); } .ds-end { display: grid; line-height: 1.2; } .ds-end-r { text-align: right; } .ds-lbl { font-size: 11px; color: var(--on-bay-muted, #44504b); } .ds-end code { font: 700 17px/1.2 var(--mono, ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace); font-variant-numeric: tabular-nums; } .ds-end a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; } .ds-end a:focus-visible { outline: 2px solid var(--focus, #0b4fb3); outline-offset: 2px; } .ds-wire { position: relative; height: 26px; display: grid; place-items: center; overflow: hidden; } .ds-wire::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: var(--rail-edge, #a9b4ad); } .ds-wire b { position: relative; padding: 0 10px; font: 700 12.5px/26px var(--sans, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif); border-radius: 3px; white-space: nowrap; background: var(--landed, #33a06d); color: var(--landed-ink, #03231a); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Strip Bay",
+    "overview": "The panel is a flight-progress strip board. Every changed file is a paper strip, and the bay it sits in says its state: not backed up, in review, held back, landed. The surface is painted metal (sage-grey in light, green-black in dark); the strips are pale paper that keeps its paper colour in both schemes. Each strip ends on its leading side in a flat colour field, and that field plus the bay carries the state. The word inside the field names the change (new, edit, gone, moved, held) or, once landed, the commit.\n\nAbove the bays, a sticky head rule always names the box commit, a connector that reads as agreement or as one side being ahead, and the GitHub commit. Under it sits one plain sentence in the largest type on the page, then any attention strips, then a row of keys. Controls are rectangular keys that sit on the bay's rail; the key that matters is paper-coloured, so it reads as the one thing lifted off the metal.\n\nThe system is dense, quiet and literal. It has its own identity rather than imitating Home Assistant cards, while staying calm enough to live inside the Home Assistant frame. It refuses the add-on default of rounded status cards with chips and a file table.",
+    "keyCharacteristics": [
+      "Two materials only: painted metal (bay, rail) and paper (strips, attention strips, dialog, toast).",
+      "State is a full-height flat colour field at the head of a strip, never a small badge on it.",
+      "Four fixed bays in a fixed order; an empty bay stays and says what would stop there.",
+      "Monospace only for machine values: paths, commits, branch names, diffs, line counts.",
+      "Motion marks a state change and nothing else.",
+      "Light and dark are the same board; the metal changes, the paper barely does."
+    ],
+    "rules": [
+      {
+        "name": "The Two Inks Rule",
+        "body": "Metal takes `on-bay` inks; paper takes `strip` inks. Anything that sits on paper (a strip, an attention strip, the dialog, the toast) uses paper tokens for its text, borders and focus ring, in both schemes.",
+        "section": "colors"
+      },
+      {
+        "name": "The Hatch Means Held Rule",
+        "body": "The 135 degree hatch (6px of `held`, 6px of `held` mixed 72% with white) appears on a held-back strip's field and on the \"Held\" attention flag, and nowhere else. Solid `held` means a failure or a destructive key.",
+        "section": "colors"
+      },
+      {
+        "name": "The Field Only Rule",
+        "body": "The four state colours are fills for fields, flags, the connector word and state keys. They are never text colours on metal or on paper.",
+        "section": "colors"
+      },
+      {
+        "name": "The Machine Values Rule",
+        "body": "Monospace is for paths, commit ids, branch names, diffs, the log and line counts. Sentences, headings, keys and field words are sans.",
+        "section": "typography"
+      },
+      {
+        "name": "The Paper Casts Rule",
+        "body": "Only paper surfaces carry a shadow. A bay, a rail, a default key and the head rule are flat.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do show a file's state with the bay it is in and a full-height colour field at the head of its strip.",
+      "Do keep all four bays on screen in the same order, and give an empty bay one sentence about what would stop there.",
+      "Do put a bay's keys on that bay's rail, with one paper-coloured primary key per rail.",
+      "Do use paper tokens (`strip-ink`, `strip-muted`, `strip-rule`) for text, borders and focus rings on anything paper, in light and dark.",
+      "Do keep monospace for paths, commit ids, branch names, diffs, the log and line counts.",
+      "Do keep keys at least 44px high at 560px and below.",
+      "Do tie motion to a state change, 150ms to 250ms, with `cubic-bezier(.16, 1, .3, 1)`, and remove it under reduced motion."
+    ],
+    "donts": [
+      "Don't build rounded status cards with chips and a file table; that is the add-on default this system refuses.",
+      "Don't use a state colour as text colour or as decoration; it fills a field or it is absent.",
+      "Don't hatch anything that is not held back.",
+      "Don't put a shadow on metal; only paper casts one.",
+      "Don't load fonts, scripts or images from outside the file.",
+      "Don't show the content of a held-back file, in a diff or anywhere else.",
+      "Don't truncate a path; let it wrap."
+    ]
+  }
+}

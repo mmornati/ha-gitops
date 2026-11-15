@@ -1,3 +1,8 @@
 gitops-backup:test
 *.log
 __pycache__/
+.impeccable/review/
+.impeccable/decision/
+.impeccable/mocks/
+.impeccable/questions/
+.impeccable/build/
