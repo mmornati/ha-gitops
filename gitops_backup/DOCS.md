@@ -70,7 +70,9 @@ Run both layers:
 | `secrets.yaml` | ❌ **never** (gitignored) | ✅ inside the **encrypted** archive |
 | `zigbee2mqtt/secret.yaml` (Z2M MQTT login, network key) | ❌ **never** | ✅ inside the **encrypted** archive |
 | `.storage/` — UI-added **integrations**, **logins/tokens**, **device/entity/area registries**, **UI (Lovelace) dashboards**, helpers | ❌ never (holds secrets) | ✅ **most restore-critical item** |
-| Credentials: `*.token`, `.google.token`, `*.key`, `*.pem`, `.cloud/` | ❌ never | ✅ |
+| Credentials: `*.token`, `.google.token`, `*.key`, `*.pem`, `*-key.bin`, `.cloud/`, `esphome/.device-builder*` | ❌ never | ✅ |
+| Copies of secrets: `secrets.yaml.*` (except `.example`, `.sample`, `.template`, `.dist`), `*.bak`, `*.orig`, `*.secret` | ❌ never | ✅ |
+| Any other file whose content looks like a secret (key block, API token, inline `password: literal`) | ❌ held back, listed in the PR and in a notification | ✅ |
 | Databases, history, logs | ❌ never | ✅ (recorder DB, if selected) |
 | App configs/data, TLS certs (`/ssl`) — live **outside** `/config` | ❌ app can't see them | ✅ |
 | Media, camera recordings | ❌ | usually excluded — external drive |
@@ -245,4 +247,6 @@ file is still written for existing `command_line` sensors.
 
 Values: `success:pr_created:<url>` · `success:pr_updated:<url>` ·
 `success:pr_unchanged:<url>` · `success:no_changes:` · `success:synced:<sha>` ·
-`success:dry_run:<n files>` · `warning:…` · `error:…`
+`success:dry_run:<n files>` · `warning:secrets_held:<n files>` (only files
+that look like they hold a secret were left, see the notification) ·
+`warning:…` · `error:…`
