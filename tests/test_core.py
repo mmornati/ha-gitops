@@ -129,5 +129,50 @@ class DiscoveryTest(unittest.TestCase):
         self.assertEqual((button["command_topic"], button["payload_press"]), ("ha_gitops/cmd", "sync"))
 
 
+class HardeningTest(unittest.TestCase):
+    def test_panel_only_commands_parse(self):
+        for cmd in ("discard", "merge", "restart"):
+            self.assertEqual(core.parse_command(cmd), (cmd, ""))
+            self.assertIn(cmd, core.PANEL_ONLY)
+        self.assertNotIn("sync", core.PANEL_ONLY)
+
+    def test_backoff_doubles_up_to_an_hour(self):
+        self.assertEqual(core.backoff_seconds(0), 0)
+        self.assertEqual([core.backoff_seconds(n) for n in (1, 2, 3)], [60, 120, 240])
+        self.assertEqual(core.backoff_seconds(30), 3600)
+
+    def test_rate_limiter_window(self):
+        rl = core.RateLimiter(limit=3, window=60)
+        self.assertEqual([rl.hit("a", t) for t in (0, 1, 2, 3)], [1, 2, 3, 4])
+        self.assertEqual(rl.hit("b", 3), 1)
+        self.assertEqual(rl.hit("a", 100), 1)  # the old ones aged out
+
+    def test_parse_name_status(self):
+        raw = "M\0a.yaml\0R100\0old name\0new\0A\0x\ty\0D\0gone\0"
+        self.assertEqual(core.parse_name_status(raw), [
+            {"path": "a.yaml", "status": "modified", "old": ""},
+            {"path": "new", "status": "renamed", "old": "old name"},
+            {"path": "x\ty", "status": "added", "old": ""},
+            {"path": "gone", "status": "deleted", "old": ""}])
+        self.assertEqual(core.parse_name_status(""), [])
+
+    def test_can_merge(self):
+        self.assertTrue(core.can_merge("5", "success", False))
+        self.assertTrue(core.can_merge("5", "none", False))
+        for checks in ("pending", "failure", "unknown"):
+            self.assertFalse(core.can_merge("5", checks, False))
+        self.assertFalse(core.can_merge("", "success", False))
+        self.assertFalse(core.can_merge("5", "success", True))
+
+    def test_discovery_without_commands_removes_controls(self):
+        full = dict(core.discovery_configs("homeassistant", "ha_gitops", "1"))
+        quiet = dict(core.discovery_configs("homeassistant", "ha_gitops", "1", commands=False))
+        self.assertEqual(full.keys(), quiet.keys())
+        removed = {t for t, cfg in quiet.items() if cfg is None}
+        self.assertEqual(removed, {t for t, cfg in full.items() if "command_topic" in cfg})
+        self.assertTrue(removed)
+        self.assertIsNotNone(quiet["homeassistant/sensor/ha_gitops/status/config"])
+
+
 if __name__ == "__main__":
     unittest.main()

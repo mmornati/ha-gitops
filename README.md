@@ -6,9 +6,8 @@ pinned Home Assistant versions *before* it can merge.
 
 [![Add repository to my Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmmornati%2Fha-gitops)
 
-[![GitHub Release](https://img.shields.io/github/v/release/askb/ha-gitops?label=release)](https://github.com/askb/ha-gitops/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/askb/ha-gitops/total?label=downloads)](https://github.com/askb/ha-gitops/releases)
-[![License](https://img.shields.io/github/license/askb/ha-gitops)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/mmornati/ha-gitops?label=release)](https://github.com/mmornati/ha-gitops/releases/latest)
+[![License](https://img.shields.io/github/license/mmornati/ha-gitops)](LICENSE)
 
 ## Why another config-backup app?
 
@@ -125,8 +124,9 @@ the initial import; every run after that only ever opens PRs.
 - **Control from HA**: an MQTT device with status sensors, Sync / Back up
   buttons and Pause / Auto-apply switches; `hassio.addon_stdin` commands;
   `ha_gitops_*` events for automations.
-- **GitOps panel** in the sidebar: status, open PR and checks, pending diff,
-  history with one-click revert PRs, and the log.
+- **GitOps panel** in the sidebar: where the box and GitHub stand, every
+  changed file sorted into not backed up / in review / held back, per-file
+  diffs, merge and discard, history with one-click revert PRs, and the log.
 
 See the app's **Documentation** tab for setup and every option.
 
@@ -136,6 +136,8 @@ See the app's **Documentation** tab for setup and every option.
   `/config/.git/config` (git reads it through an askpass helper).
 - The webhook only acts on deliveries signed with your `webhook_secret`; the
   panel is reachable only through HA ingress.
+- Discard, merge and restart are accepted from the panel only, never over
+  MQTT; `mqtt_commands: false` turns MQTT commands off altogether.
 - The seeded `.gitignore` excludes `secrets.yaml`, `.storage/`, `.cloud/`,
   databases, logs, and the app's own status/log files (committing status
   files creates a PR-per-day feedback loop — learned the hard way).

@@ -19,9 +19,11 @@ import json
 import logging
 import os
 import shutil
+import signal
 import sys
 import threading
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 from aiohttp import ClientSession, ClientTimeout, web
@@ -43,7 +45,13 @@ STATE_PATH = DATA_DIR / "controller_state.json"
 STATUS_PATH = DATA_DIR / "status.json"
 OPEN_PR_PATH = DATA_DIR / "open_pr"
 LOG_PATH = DATA_DIR / "gitops_backup.log"
-SUPERVISOR = "http://supervisor"
+PANEL_INDEX = DATA_DIR / "panel.index"
+LEGACY_STATUS = CONFIG_DIR / ".gitops_backup_status"
+SUPERVISOR = os.environ.get("SUPERVISOR_URL", "http://supervisor")
+ENGINE_TIMEOUT = int(os.environ.get("ENGINE_TIMEOUT", "1800"))  # seconds, one run
+DRIFT_TTL = 15  # seconds a drift snapshot is reused
+RECHECK_DELAY = 6  # the watcher keeps noting paths for 5s after a run
+EMPTY_DRIFT = {"files": [], "diff": "", "truncated": False}
 GITHUB_API = os.environ.get("GITHUB_API", "https://api.github.com")
 INGRESS_PORT = 8099
 WEBHOOK_PORT = 8098
@@ -66,7 +74,7 @@ class Controller:
         self.opts = opts
         self.base = opts.get("base_branch") or "main"
         self.sync_mode = opts.get("sync_mode") or "both"
-        self.state = {"paused": False, "auto_apply": True}
+        self.state = {"paused": False, "auto_apply": True, "restart_required": False}
         self.state.update(load_json(STATE_PATH, {}))
         self.jobs: dict[str, dict] = {}
         self.reverts: list[str] = []
@@ -80,6 +88,19 @@ class Controller:
         self.mqtt = None
         self.loop = asyncio.get_running_loop()
         self.git_ignore_cache: dict[str, bool] = {}
+        self.mqtt_commands = bool(opts.get("mqtt_commands", True))
+        self.hook_limiter = core.RateLimiter(limit=10, window=60)
+        self.failures = 0        # failed sync/backup runs in a row
+        self.retry_at = 0.0      # the poller holds off until then
+        self.rev = 0             # bumped whenever the drift may have changed
+        self.debounce: core.Debounce | None = None
+        self.run_events: set[str] = set()   # paths changed while a run was on
+        self.run_overflow = False
+        self.retriggers = 0
+        self.drift_cache: dict | None = None
+        self.drift_rev = -1
+        self.drift_time = 0.0
+        self.drift_lock = asyncio.Lock()
 
     # ---- helpers -----------------------------------------------------------
 
@@ -95,11 +116,14 @@ class Controller:
         env["GIT_CONFIG_VALUE_0"] = str(CONFIG_DIR)
         return env
 
-    async def git(self, *args: str, timeout: float = 60) -> tuple[int, str]:
+    async def git(self, *args: str, timeout: float = 60,
+                  extra_env: dict | None = None) -> tuple[int, str]:
         if not (CONFIG_DIR / ".git").exists():
             return 1, ""
+        env = self.git_env()
+        env.update(extra_env or {})
         proc = await asyncio.create_subprocess_exec(
-            "git", "-C", str(CONFIG_DIR), *args, env=self.git_env(),
+            "git", "-C", str(CONFIG_DIR), *args, env=env,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
         try:
             out, _ = await asyncio.wait_for(proc.communicate(), timeout)
@@ -124,7 +148,7 @@ class Controller:
     def next_job(self):
         if self.reverts:
             return "revert", "panel", {"REVERT_SHA": self.reverts.pop(0)}
-        for mode in ("dry_run", "full", "sync"):
+        for mode in ("discard", "dry_run", "full", "sync"):
             if mode in self.jobs:
                 job = self.jobs.pop(mode)
                 if mode == "full":
@@ -151,21 +175,102 @@ class Controller:
         log.info("Run: %s (trigger: %s)", mode, trigger)
         self.running = True
         await self.publish()
+        # Its own process group, so a run that hangs can be stopped as a whole
         proc = await asyncio.create_subprocess_exec(
-            "bash", str(ENGINE), env=env,
+            "bash", str(ENGINE), env=env, start_new_session=True,
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
-        async for line in proc.stdout:
-            sys.stdout.write(line.decode(errors="replace"))
-        rc = await proc.wait()
+
+        async def pump():
+            async for line in proc.stdout:
+                sys.stdout.write(line.decode(errors="replace"))
+            return await proc.wait()
+
+        try:
+            rc = await asyncio.wait_for(pump(), ENGINE_TIMEOUT)
+        except asyncio.TimeoutError:
+            rc = await self.stop_engine(proc, mode, trigger)
         if rc != 0:
             log.warning("Engine exited with %s", rc)
         self.running = False
         self.last_run_end = time.monotonic()
+        self.rev += 1
+        status = load_json(STATUS_PATH, {})
+        if mode in ("sync", "full"):
+            if rc != 0 or status.get("state") == "error":
+                self.failures += 1
+                self.retry_at = time.monotonic() + core.backoff_seconds(self.failures)
+            else:
+                self.failures, self.retry_at = 0, 0.0
+        applied = status.get("applied", "") if rc == 0 else ""
+        if "restart_required" in applied:
+            self.set_restart_required(True)
+        elif "homeassistant.restart" in applied:
+            self.set_restart_required(False)
         _, head = await self.git("rev-parse", f"refs/heads/{self.base}")
         if head.strip() and not self.remote_head:
             self.remote_head = head.strip()
         await self.refresh_pr()
         await self.publish()
+        asyncio.create_task(self.recheck_drift(mode))
+
+    async def stop_engine(self, proc, mode: str, trigger: str) -> int:
+        """Stops a run that went over ENGINE_TIMEOUT and records why."""
+        log.error("Run %s still going after %ss; stopping it", mode, ENGINE_TIMEOUT)
+        for sig, grace in ((signal.SIGTERM, 15), (signal.SIGKILL, 5)):
+            try:
+                os.killpg(proc.pid, sig)
+            except ProcessLookupError:
+                break
+            try:
+                await asyncio.wait_for(proc.wait(), grace)
+                break
+            except asyncio.TimeoutError:
+                continue
+        status = load_json(STATUS_PATH, {})
+        status.update(state="error", detail="timeout",
+                      extra=f"run stopped after {ENGINE_TIMEOUT}s", mode=mode, trigger=trigger,
+                      time=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        try:
+            STATUS_PATH.write_text(json.dumps(status))
+            LEGACY_STATUS.write_text(f"error:timeout:{status['extra']}\n")
+        except OSError as err:
+            log.warning("Could not record the timeout: %s", err)
+        return proc.returncode if proc.returncode else 124
+
+    def set_restart_required(self, value: bool) -> None:
+        if self.state.get("restart_required") != value:
+            self.state["restart_required"] = value
+            self.save_state()
+
+    async def recheck_drift(self, mode: str) -> None:
+        """Queues a backup for edits that were made while a run was on.
+
+        The watcher cannot tell those from the files the engine itself
+        rewrites (stash, pull, pop), so it only notes the paths. Once the run
+        is over, any of them that is still not in the open backup PR was a
+        real edit the run missed.
+        """
+        await asyncio.sleep(RECHECK_DELAY)
+        if self.running:
+            return  # the next run's check takes these over
+        events, overflow = self.run_events, self.run_overflow
+        self.run_events, self.run_overflow = set(), False
+        if not events and not overflow:
+            return
+        status = load_json(STATUS_PATH, {})
+        if (self.debounce is None or self.state["paused"] or mode == "dry_run"
+                or status.get("state") == "error" or status.get("detail") == "dry_run"):
+            return
+        snap = await self.drift(force=True)
+        fresh = {f["path"] for f in snap["files"] if not f["in_pr"] and not f["held"]}
+        if not (fresh & events or (overflow and fresh)):
+            return
+        if self.retriggers >= 3:  # never loop on something a run cannot back up
+            log.warning("Edits made during the last runs are still pending; waiting for a new change")
+            return
+        self.retriggers += 1
+        log.info("Files changed during the last run; queuing a backup")
+        self.debounce.touch(time.monotonic())
 
     # ---- commands ----------------------------------------------------------
 
@@ -175,7 +280,11 @@ class Controller:
             log.warning("Ignored unknown command from %s: %r", source, raw)
             return "unknown command"
         cmd, arg = parsed
+        if cmd in core.PANEL_ONLY and source == "mqtt":
+            log.warning("Refused %s over MQTT: only the panel can do that", cmd)
+            return "not allowed over MQTT"
         log.info("Command from %s: %s %s", source, cmd, arg)
+        result = "ok"
         if cmd == "sync":
             self.request("sync", source)
         elif cmd == "backup":
@@ -192,7 +301,64 @@ class Controller:
             self.save_state()
         elif cmd == "refresh":
             await self.refresh_pr()
+        elif cmd == "discard":
+            self.request("discard", source)
+        elif cmd == "merge":
+            result = await self.merge_pr()
+        elif cmd == "restart":
+            result = await self.restart_ha()
         await self.publish()
+        return result
+
+    async def merge_pr(self) -> str:
+        """Merges the open backup PR on GitHub, then syncs it down."""
+        await self.refresh_pr()
+        number = self.pr_info.get("number")
+        if not number:
+            return "there is no open backup PR"
+        if not core.can_merge(number, self.pr_checks, self.running):
+            return f"not merging: PR checks are {self.pr_checks}"
+        repo = self.opts.get("github_repo", "")
+        headers = {"Authorization": f"token {self.opts.get('github_token', '')}",
+                   "Accept": "application/vnd.github+json"}
+        body = {"merge_method": self.opts.get("merge_method") or "merge"}
+        try:
+            async with ClientSession(timeout=ClientTimeout(total=30), headers=headers) as s:
+                async with s.put(f"{GITHUB_API}/repos/{repo}/pulls/{number}/merge", json=body) as r:
+                    if r.status == 200:
+                        log.info("Merged backup PR #%s from the panel", number)
+                        self.request("sync", "merge")
+                        return "ok"
+                    try:
+                        reason = (await r.json(content_type=None)).get("message", "")
+                    except ValueError:
+                        reason = ""
+                    return f"GitHub refused the merge: {reason or r.status}"
+        except Exception as err:  # noqa: BLE001 — network is best effort
+            return f"could not reach GitHub: {err}"
+
+    async def restart_ha(self) -> str:
+        """Restarts Home Assistant, but only on a configuration that checks out."""
+        token = os.environ.get("SUPERVISOR_TOKEN")
+        if not token:
+            return "no access to the Home Assistant API"
+        headers = {"Authorization": f"Bearer {token}"}
+        try:
+            async with ClientSession(timeout=ClientTimeout(total=130), headers=headers) as s:
+                async with s.post(f"{SUPERVISOR}/core/api/config/core/check_config", json={}) as r:
+                    check = await r.json(content_type=None) if r.status == 200 else {}
+                if check.get("result") != "valid":
+                    return f"not restarting: config check failed ({check.get('errors') or 'no answer'})"
+                self.set_restart_required(False)
+                try:
+                    async with s.post(f"{SUPERVISOR}/core/api/services/homeassistant/restart",
+                                      json={}):
+                        pass
+                except Exception:  # noqa: BLE001 — HA drops the call as it goes down
+                    pass
+        except Exception as err:  # noqa: BLE001
+            return f"could not reach Home Assistant: {err}"
+        log.info("Home Assistant restart requested from the panel")
         return "ok"
 
     def stdin_reader(self) -> None:
@@ -222,7 +388,10 @@ class Controller:
             if remote and remote != self.remote_head:
                 self.remote_head = remote
                 await self.publish()
-            if pull and seconds > 0 and remote and not self.state["paused"] and not self.running:
+            # After failed runs the poller backs off (1 min, 2, 4… up to 1 h)
+            # instead of retrying the same pull every interval.
+            if (pull and seconds > 0 and remote and not self.state["paused"]
+                    and not self.running and time.monotonic() >= self.retry_at):
                 _, local = await self.git("rev-parse", f"refs/heads/{self.base}")
                 local = local.strip()
                 if local and remote != local:
@@ -251,7 +420,7 @@ class Controller:
             log.warning("inotifywait not found; file watching is off")
             return
         quiet = int(self.opts.get("debounce_seconds") or 120)
-        debounce = core.Debounce(quiet, max_wait=max(quiet * 5, 600))
+        debounce = self.debounce = core.Debounce(quiet, max_wait=max(quiet * 5, 600))
 
         async def fire():
             while True:
@@ -273,13 +442,23 @@ class Controller:
             async for raw in proc.stdout:
                 path = raw.decode(errors="replace").rstrip("\n")
                 rel = path[len(prefix):] if path.startswith(prefix) else path
-                # The engine itself rewrites files (stash/pull/pop): ignore those
+                if core.watcher_ignores(rel):
+                    continue
+                # The engine itself rewrites files (stash/pull/pop). Those
+                # cannot be told from real edits here, so they are only noted
+                # and looked at once the run is over (recheck_drift).
                 if self.running or time.monotonic() - self.last_run_end < 5:
+                    if len(self.run_events) < 5000:
+                        self.run_events.add(rel)
+                    else:
+                        self.run_overflow = True
                     continue
                 if rel.endswith(".gitignore"):
                     self.git_ignore_cache.clear()
-                if core.watcher_ignores(rel) or await self.is_git_ignored(rel):
+                if await self.is_git_ignored(rel):
                     continue
+                self.rev += 1
+                self.retriggers = 0
                 debounce.touch(time.monotonic())
             err = (await proc.stderr.read()).decode(errors="replace").strip()
             log.warning("File watcher stopped (%s); restarting in 60s", err or proc.returncode)
@@ -311,32 +490,109 @@ class Controller:
 
     # ---- state publishing --------------------------------------------------
 
+    async def drift(self, force: bool = False) -> dict:
+        """What differs between /config and the base branch, file by file.
+
+        Built in a scratch index, so the repository's own index and the files
+        are not touched. Cached, and never rebuilt while a run is rewriting
+        the tree.
+        """
+        now = time.monotonic()
+        fresh = (self.drift_cache is not None and self.drift_rev == self.rev
+                 and now - self.drift_time < DRIFT_TTL)
+        if self.drift_cache is not None and (self.running or (fresh and not force)):
+            return self.drift_cache
+        if self.running:
+            return EMPTY_DRIFT
+        async with self.drift_lock:
+            snap = await self.compute_drift()
+        if snap is not None:
+            self.drift_cache, self.drift_rev, self.drift_time = snap, self.rev, time.monotonic()
+        return self.drift_cache or EMPTY_DRIFT
+
+    async def compute_drift(self) -> dict | None:
+        git_dir = CONFIG_DIR / ".git"
+        if not git_dir.exists():
+            return dict(EMPTY_DRIFT)
+        try:
+            shutil.copyfile(git_dir / "index", PANEL_INDEX)
+        except OSError:
+            PANEL_INDEX.unlink(missing_ok=True)
+        env = {"GIT_INDEX_FILE": str(PANEL_INDEX)}
+        try:
+            rc, _ = await self.git("add", "-A", timeout=120, extra_env=env)
+            if rc != 0:
+                return None
+            rc, raw = await self.git("diff", "--cached", "--name-status", "-z", "-M", "HEAD",
+                                     extra_env=env)
+            if rc != 0:
+                return None
+            files = core.parse_name_status(raw)
+            held = set(load_json(STATUS_PATH, {}).get("held") or [])
+            # Files the open backup PR already has exactly as they are on the box
+            not_in_pr = None
+            branch = self.pr_info.get("branch")
+            if branch:
+                ref = f"refs/heads/{branch}"
+                rc, _ = await self.git("rev-parse", "-q", "--verify", ref)
+                if rc == 0:
+                    rc, names = await self.git("diff", "--cached", "--name-only", "-z",
+                                               "--no-renames", ref, extra_env=env)
+                    if rc == 0:
+                        not_in_pr = set(filter(None, names.split("\0")))
+            for f in files:
+                f["held"] = f["path"] in held and f["status"] != "deleted"
+                f["in_pr"] = (not f["held"] and not_in_pr is not None
+                              and f["path"] not in not_in_pr)
+            # The content of a held file is a secret: it is never sent to the panel
+            exclude = [f":(exclude,literal){f['path']}" for f in files if f["held"]]
+            _, diff = await self.git("diff", "--cached", "--no-color", "-M", "HEAD", "--", ".",
+                                     *exclude, extra_env=env)
+            truncated = len(diff) > 400_000
+            return {"files": files, "diff": diff[:400_000], "truncated": truncated}
+        finally:
+            PANEL_INDEX.unlink(missing_ok=True)
+
     async def build_state(self) -> dict:
         status = load_json(STATUS_PATH, {})
-        rc, porcelain = await self.git("status", "--porcelain")
-        self.pending = len([ln for ln in porcelain.splitlines() if ln.strip()]) if rc == 0 else 0
+        snap = await self.drift()
+        self.pending = len(snap["files"])
+        held = [f["path"] for f in snap["files"] if f["held"]]
         _, local = await self.git("rev-parse", f"refs/heads/{self.base}")
+        local = local.strip()
         state = "running" if self.running else status.get("state", "unknown")
+        number = self.pr_info.get("number", "")
         return {
             "state": state,
             "detail": status.get("detail", ""),
             "extra": status.get("extra", ""),
             "last_run": status.get("time"),
             "trigger": status.get("trigger", ""),
+            "mode": status.get("mode", ""),
             "applied": status.get("applied", ""),
-            "local_head": local.strip(),
-            "remote_head": self.remote_head or local.strip(),
+            "local_head": local,
+            "remote_head": self.remote_head or local,
             "pending": self.pending,
-            "pr_number": self.pr_info.get("number", ""),
+            "pending_new": sum(1 for f in snap["files"] if not f["in_pr"] and not f["held"]),
+            "held": held,
+            "pr_number": number,
             "pr_url": self.pr_info.get("url", ""),
             "pr_branch": self.pr_info.get("branch", ""),
             "pr_checks": self.pr_checks,
+            "can_merge": core.can_merge(number, self.pr_checks, self.running),
             "paused": self.state["paused"],
             "auto_apply": self.state.get("auto_apply", True),
+            "restart_required": bool(self.state.get("restart_required")),
             "running": self.running,
+            "retry_in": max(0, round(self.retry_at - time.monotonic())),
             "sync_mode": self.sync_mode,
             "webhook": bool(self.opts.get("webhook_secret")),
+            "mqtt": self.mqtt is not None,
+            "mqtt_commands": self.mqtt_commands,
+            "repo": self.opts.get("github_repo", ""),
+            "base": self.base,
             "version": VERSION,
+            "rev": self.rev,
         }
 
     async def publish(self) -> None:
@@ -400,16 +656,23 @@ class Controller:
 
         def on_connect(c, *_args):
             c.publish(f"{MQTT_BASE}/availability", "online", retain=True)
-            for topic, payload in core.discovery_configs("homeassistant", MQTT_BASE, VERSION):
-                c.publish(topic, json.dumps(payload), retain=True)
-            c.subscribe(f"{MQTT_BASE}/cmd")
+            for topic, payload in core.discovery_configs(
+                    "homeassistant", MQTT_BASE, VERSION, commands=self.mqtt_commands):
+                # An empty config removes an entity (mqtt_commands turned off)
+                c.publish(topic, json.dumps(payload) if payload is not None else "", retain=True)
+            if self.mqtt_commands:
+                c.subscribe(f"{MQTT_BASE}/cmd")
             c.subscribe("homeassistant/status")
             connected.set()
 
         def on_message(c, _userdata, msg):
             if msg.topic == "homeassistant/status":
                 if msg.payload == b"online":  # HA restarted: republish state
-                    asyncio.run_coroutine_threadsafe(self.publish(), self.loop)
+                    asyncio.run_coroutine_threadsafe(self.ha_started(), self.loop)
+                return
+            if getattr(msg, "retain", False):
+                # A retained command would run again on every reconnect
+                log.warning("Ignored a retained MQTT command")
                 return
             asyncio.run_coroutine_threadsafe(self.command(msg.payload, "mqtt"), self.loop)
 
@@ -425,14 +688,26 @@ class Controller:
         self.mqtt = client
         log.info("MQTT discovery published (device: HA GitOps)")
 
+    async def ha_started(self) -> None:
+        self.set_restart_required(False)
+        await self.publish()
+
     # ---- HTTP: webhook + ingress panel -------------------------------------
 
     async def handle_webhook(self, request: web.Request) -> web.Response:
         body = await request.read()
         if not core.verify_signature(self.opts.get("webhook_secret", ""), body,
                                      request.headers.get("X-Hub-Signature-256")):
-            log.warning("Webhook with a bad signature from %s", request.remote)
-            return web.Response(status=401, text="bad signature")
+            # Valid deliveries are never limited; bad ones stop being logged
+            # after 10 a minute per address, so they cannot flood the log.
+            count = self.hook_limiter.hit(request.remote or "?", time.monotonic())
+            if count <= self.hook_limiter.limit:
+                log.warning("Webhook with a bad signature from %s", request.remote)
+                return web.Response(status=401, text="bad signature")
+            if count == self.hook_limiter.limit + 1:
+                log.warning("More bad webhook signatures from %s; not logging them for a minute",
+                            request.remote)
+            return web.Response(status=429, text="too many bad signatures")
         try:
             payload = json.loads(body or b"{}")
         except ValueError:
@@ -460,11 +735,7 @@ class Controller:
         return web.json_response(await self.build_state())
 
     async def api_diff(self, _request):
-        _, porcelain = await self.git("status", "--porcelain")
-        _, diff = await self.git("diff", "--no-color", "HEAD")
-        if len(diff) > 400_000:
-            diff = diff[:400_000] + "\n… diff truncated …\n"
-        return web.json_response({"files": porcelain.splitlines(), "diff": diff})
+        return web.json_response(await self.drift())
 
     async def api_history(self, _request):
         _, out = await self.git("log", "--first-parent", "-n", "30", "--date=iso-strict",
