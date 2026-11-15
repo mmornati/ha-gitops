@@ -66,6 +66,7 @@ SIGNOFF_ARGS=()
 
 # Filled in as the run goes, written to status.json
 PR_URL="" PR_NUMBER="" PR_BRANCH="" CHANGED_COUNT=0 APPLIED=""
+HELD=()
 
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S') - $*" | tee -a "$LOG_FILE"; }
 
@@ -237,14 +238,26 @@ seed_gitignore() {
         cat > .gitignore <<'EOF'
 # Secrets and credentials — never commit
 secrets.yaml
-zigbee2mqtt/secret.yaml
+secrets.yaml.*
+!secrets.yaml.example
+!secrets.yaml.sample
+!secrets.yaml.template
+!secrets.yaml.dist
+*.bak
+*.bak-*
+*.bak.*
+*.orig
+*.secret
 *.pem
 *.key
 *.token
+*-key.bin
+esphome/.device-builder*
 .google.token
 .git-credentials
 .cloud/
 .storage/
+zigbee2mqtt/secret.yaml
 
 # Runtime state, databases, logs
 *.db
@@ -274,17 +287,32 @@ EOF
 
 never_commit_patterns() {
     # Secrets, credentials, and the app's own runtime metadata — must never be
-    # committed. Shared by the exclude writer and the untracker.
+    # committed. Shared by the exclude writer and the untracker. Backup and
+    # editor copies of secrets.yaml (`secrets.yaml.bak-2026…`, `*.orig`) are
+    # the most common way a real secret slips into a PR, so they are covered
+    # too; the `!` lines keep committed templates such as secrets.yaml.example.
     cat <<'EOF'
 secrets.yaml
-zigbee2mqtt/secret.yaml
-*.key
+secrets.yaml.*
+!secrets.yaml.example
+!secrets.yaml.sample
+!secrets.yaml.template
+!secrets.yaml.dist
+*.bak
+*.bak-*
+*.bak.*
+*.orig
+*.secret
 *.pem
+*.key
 *.token
+*-key.bin
+esphome/.device-builder*
 .google.token
 .git-credentials
 .cloud/
 .storage/
+zigbee2mqtt/secret.yaml
 .gitops_backup_status
 gitops_backup.log
 EOF
@@ -315,15 +343,67 @@ untrack_secrets() {
     # If a prior run committed a secret/credential, stop tracking it. Called
     # AFTER the upstream sync (not before the stash — a staged deletion would be
     # lost in stash/pop) so the removal counts as drift and flows out through the
-    # next backup PR for review.
+    # next backup PR for review. Uses git's own ignore matcher, so the `!`
+    # negations behave exactly as they do in .gitignore.
     [ -d .git ] || return 0
-    never_commit_patterns | while IFS= read -r pat; do
-        [ -n "$pat" ] || continue
-        if git ls-files --error-unmatch -- "$pat" >/dev/null 2>&1; then
-            log "⚠ Untracking previously-committed sensitive path: ${pat}"
-            git rm -q --cached -r -- "$pat"
+    local patterns path
+    patterns=$(mktemp)
+    never_commit_patterns > "$patterns"
+    while IFS= read -r -d '' path; do
+        log "⚠ Untracking previously-committed sensitive path: ${path}"
+        git --literal-pathspecs rm -q --cached -- "$path"
+    done < <(git ls-files -z -c -i --exclude-from="$patterns")
+    rm -f "$patterns"
+}
+
+scan_staged_for_secrets() {
+    # Content-level backstop: unstages files whose staged content (the blob in
+    # the index, exactly what would be committed) looks like a secret, see
+    # secret_scan.py, and lists them in HELD. Fails closed: if the scanner
+    # cannot run or a file cannot be unstaged, the caller must not push.
+    HELD=()
+    local out label path
+    out=$(mktemp)
+    if ! git diff --cached --name-only --diff-filter=AM -z \
+        | python3 "${HERE}/secret_scan.py" > "$out"; then
+        rm -f "$out"
+        log "❌ Secret scan could not run; not backing up"
+        return 1
+    fi
+    # Two NUL-ended fields per record, read without IFS splitting, so a path
+    # with tabs, newlines or leading/trailing blanks comes through intact.
+    while IFS= read -r -d '' path && IFS= read -r -d '' label; do
+        # Only the rule label and the path are logged, never the match
+        log "⚠ Secret-like content (${label}) in ${path} — held back from backup"
+        if git rev-parse -q --verify HEAD >/dev/null; then
+            git --literal-pathspecs reset -q -- "$path"
+        else # bootstrap: no commit yet
+            git --literal-pathspecs rm -q --cached -- "$path"
+        fi
+        HELD+=("$path")
+    done < "$out"
+    rm -f "$out"
+    # A held file that is somehow still staged must never be pushed
+    for path in ${HELD[@]+"${HELD[@]}"}; do
+        if ! git --literal-pathspecs diff --cached --quiet -- "$path"; then
+            log "❌ Could not unstage ${path}; not backing up"
+            return 1
         fi
     done
+}
+
+held_report() {
+    # Tells Home Assistant which files a run held back, if any.
+    [ "${#HELD[@]}" -gt 0 ] || return 0
+    local list
+    list=$(printf -- '- %s\n' "${HELD[@]}")
+    ha_notify "HA GitOps: files held back" \
+        "These files look like they contain a secret, so they were NOT backed up to GitHub:
+
+${list}
+
+Move the value to secrets.yaml and reference it with !secret, or add the file to .gitignore."
+    ha_event secrets_held "$(printf '%s\n' "${HELD[@]}" | jq -Rn '{files: [inputs]}')"
 }
 
 bootstrap_if_needed() {
@@ -339,12 +419,19 @@ bootstrap_if_needed() {
     fi
     git init -q -b "$BASE_BRANCH"
     seed_gitignore
+    write_secret_excludes
     git add -A
+    if ! scan_staged_for_secrets; then
+        rm -rf .git
+        write_status error secret_scan "the secret scan could not run"
+        exit 1
+    fi
     git commit -q "${SIGNOFF_ARGS[@]}" -m "chore: initial Home Assistant config import"
     git remote add origin "$REMOTE_URL"
     # Push base branch only on bootstrap; every later change goes through a PR
     git push -q -u origin "$BASE_BRANCH"
     write_status success bootstrap "initial import pushed to ${BASE_BRANCH}"
+    held_report
     log "Bootstrap complete"
 }
 
@@ -569,15 +656,30 @@ backup_drift() {
         git reset -q
         untrack_secrets
         git add -A
+        scan_staged_for_secrets || { write_status error secret_scan "the secret scan could not run"; return 1; }
         if git diff --cached --quiet; then
-            write_status success pr_unchanged "${PR_URL:-$branch_name}"
+            if [ "${#HELD[@]}" -gt 0 ]; then
+                write_status warning secrets_held "${#HELD[@]} files"
+                held_report
+            else
+                write_status success pr_unchanged "${PR_URL:-$branch_name}"
+            fi
             log "Drift is already in the open backup PR"
             return 0
         fi
     else
+        # Stage and scan before creating the branch, so a run that holds
+        # everything back leaves no empty branch behind.
+        git add -A
+        scan_staged_for_secrets || { write_status error secret_scan "the secret scan could not run"; return 1; }
+        if git diff --cached --quiet; then
+            write_status warning secrets_held "${#HELD[@]} files"
+            log "Nothing left to back up after holding back secret-like files"
+            held_report
+            return 0
+        fi
         branch_name="${BRANCH_PREFIX}/$(date '+%Y-%m-%d-%H%M%S')"
         git checkout -q -b "$branch_name"
-        git add -A
     fi
     local step_count
     step_count=$(git diff --cached --name-only | wc -l | tr -d ' ')
@@ -592,6 +694,12 @@ backup_drift() {
     CHANGED_COUNT="$total"
     title="chore: config backup (${total} files)"
     body=$(pr_body "refs/heads/${BASE_BRANCH}" HEAD)
+    if [ "${#HELD[@]}" -gt 0 ]; then
+        body+=$'\n\n### Held back\n\nNot in this PR, because the content looks like a secret. Move the value to `secrets.yaml` and use `!secret`, or add the file to `.gitignore`.\n\n'
+        # shellcheck disable=SC2016 # literal markdown backticks
+        body+=$(printf -- '- `%s`\n' "${HELD[@]}")
+    fi
+    held_report
     if [ "$new_pr" = false ] && [ -n "$PR_NUMBER" ]; then
         update_pull_request "$PR_NUMBER" "$title" "$body" || true
         write_status success pr_updated "$PR_URL"

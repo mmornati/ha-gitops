@@ -59,7 +59,7 @@ jobs:
       - name: Unit + controller tests
         run: |
           pip install --quiet aiohttp
-          python3 -m unittest tests/test_core.py tests/test_controller.py
+          python3 -m unittest tests/test_core.py tests/test_controller.py tests/test_secret_scan.py
 
   addon-lint:
     name: App Lint

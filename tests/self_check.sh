@@ -55,7 +55,12 @@ grep -q "^secrets.yaml$" "$TMP/config/.gitignore" || { echo "FAIL: secrets.yaml 
 options false
 HOME="$TMP" git config --global "url.$TMP/origin.git.insteadOf" \
   "https://github.com/local/test.git"
+echo "api_key: abcdef1234567890" > "$TMP/config/rest.yaml"  # must not reach the base branch
 run
+if git -C "$TMP/config" ls-files | grep -q "^rest.yaml$"; then
+  echo "FAIL: a file with an inline API key was in the initial import"; exit 1
+fi
+rm -f "$TMP/config/rest.yaml"
 git -C "$TMP/config" log --oneline -1 | grep -q "initial" || { echo "FAIL: no bootstrap commit"; exit 1; }
 git -c safe.bareRepository=all -C "$TMP/origin.git" rev-parse main >/dev/null || { echo "FAIL: main not pushed"; exit 1; }
 # secrets must not be committed
@@ -260,6 +265,68 @@ if echo "$tree" | grep -qE '^\.google\.token$|^leaked\.key$|^secrets\.yaml$|^zig
   echo "FAIL: a secret/credential was committed to the backup branch"; exit 1
 fi
 echo "$tree" | grep -q "^configuration.yaml$" || { echo "FAIL: real drift not backed up"; exit 1; }
+
+# 4b. Backup/editor copies of secrets.yaml are the easiest way to leak a real
+#     secret (a `secrets.yaml.bak-<date>` left by a manual edit), and ESPHome
+#     Device Builder keeps a key under esphome/. None of them may be pushed.
+cp "$TMP/config/secrets.yaml" "$TMP/config/secrets.yaml.bak-20260101"
+cp "$TMP/config/secrets.yaml" "$TMP/config/secrets.yaml.bak"
+echo "secret: old" > "$TMP/config/automations.yaml.orig"
+echo "registry" > "$TMP/config/entity_registry.bak.1793051273"
+mkdir -p "$TMP/config/esphome"
+head -c 32 /dev/urandom > "$TMP/config/esphome/.device-builder-peer-link-key.bin"
+echo "esphome: {name: plug}" > "$TMP/config/esphome/plug.yaml"
+# A tracked template must NOT be treated as a secret copy
+echo "api_key: CHANGE_ME" > "$TMP/config/secrets.yaml.example"
+HOME="$TMP" git -C "$TMP/config" add secrets.yaml.example
+HOME="$TMP" git -C "$TMP/config" commit -q -m "add secrets template"
+echo "bak drift" >> "$TMP/config/configuration.yaml"
+run
+if grep -q "Untracking.*secrets.yaml.example" "$TMP/data/gitops_backup.log"; then
+  echo "FAIL: secrets.yaml.example template was untracked as a secret"; exit 1
+fi
+newbranch=$(git -c safe.bareRepository=all -C "$TMP/origin.git" branch \
+  | grep -o 'auto-backup/[^ ]*' | tail -1)
+tree=$(git -c safe.bareRepository=all -C "$TMP/origin.git" ls-tree -r --name-only "$newbranch")
+if echo "$tree" | grep -qE 'secrets\.yaml\.bak|\.orig$|\.bak\.[0-9]+$|device-builder'; then
+  echo "FAIL: a secrets copy or the ESPHome key was committed to the backup branch"; exit 1
+fi
+echo "$tree" | grep -q "^secrets.yaml.example$" \
+  || { echo "FAIL: secrets.yaml.example template dropped from the backup"; exit 1; }
+echo "$tree" | grep -q "^esphome/plug.yaml$" \
+  || { echo "FAIL: ordinary ESPHome config not backed up"; exit 1; }
+[ -f "$TMP/config/secrets.yaml.bak-20260101" ] \
+  || { echo "FAIL: the secrets copy was removed from the box"; exit 1; }
+
+# 4c. Content scan: a file with a literal credential is held back, the rest
+#     of the drift still goes out, and the value never reaches the log.
+printf 'mqtt:\n  password: SuperSecretPassw0rd\n' > "$TMP/config/mqtt.yaml"
+printf 'mqtt:\n  password: !secret mqtt_password\n' > "$TMP/config/mqtt_ok.yaml"
+# A name with a tab and a trailing blank must be held back all the same
+odd="$TMP/config/$(printf 'odd\tname ').yaml"
+echo "api_key: abcdef1234567890" > "$odd"
+run
+tree=$(git -c safe.bareRepository=all -C "$TMP/origin.git" ls-tree -r --name-only "$newbranch")
+if echo "$tree" | grep -q "^mqtt.yaml$"; then
+  echo "FAIL: a file with an inline password was pushed"; exit 1
+fi
+if echo "$tree" | grep -q "odd"; then
+  echo "FAIL: a held file with an unusual name was pushed"; exit 1
+fi
+rm -f "$odd"
+echo "$tree" | grep -q "^mqtt_ok.yaml$" \
+  || { echo "FAIL: a file using !secret was held back"; exit 1; }
+[ -f "$TMP/config/mqtt.yaml" ] || { echo "FAIL: held file removed from the box"; exit 1; }
+grep -q "inline credential.*mqtt.yaml.*held back" "$TMP/data/gitops_backup.log" \
+  || { echo "FAIL: held file not logged"; exit 1; }
+if grep -q "SuperSecretPassw0rd" "$TMP/data/gitops_backup.log"; then
+  echo "FAIL: the secret value was written to the log"; exit 1
+fi
+# Nothing but the held file left to back up
+run
+[ "$(status)" = "warning:secrets_held:1 files" ] \
+  || { echo "FAIL: held-only run status = $(status)"; exit 1; }
+rm -f "$TMP/config/mqtt.yaml"
 
 # 5. Static wiring checks for apply_after_pull (no HA/Supervisor available here)
 grep -q '"homeassistant_api": true' "${HERE}/../gitops_backup/config.json" \

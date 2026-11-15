@@ -139,6 +139,9 @@ See the app's **Documentation** tab for setup and every option.
 - The seeded `.gitignore` excludes `secrets.yaml`, `.storage/`, `.cloud/`,
   databases, logs, and the app's own status/log files (committing status
   files creates a PR-per-day feedback loop — learned the hard way).
+- Copies of `secrets.yaml` (`*.bak`, `*.orig`, …) and files whose content
+  looks like a secret (key blocks, API tokens, inline passwords) are held
+  back from every backup and reported in Home Assistant.
 - CI validates with **stub** secrets; your real `secrets.yaml` never leaves the box.
 - Nothing in this app ever force-pushes or writes to your base branch after
   the initial bootstrap import. Reverts are PRs too.

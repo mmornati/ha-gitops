@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.4.4
+
+Ported from upstream askb/ha-gitops (0.4.0 to 0.5.2).
+
+- Security: backup and editor copies of `secrets.yaml` (`secrets.yaml.*`,
+  `*.bak`, `*.bak-*`, `*.bak.*`, `*.orig`, `*.secret`), `*-key.bin` and
+  `esphome/.device-builder*` (ESPHome Device Builder state, which holds a
+  key) are now on the never-commit list. With the file watcher on, a
+  `secrets.yaml.bak` left by a manual edit reached GitHub about two minutes
+  later. Templates named `secrets.yaml.{example,sample,template,dist}` are
+  still backed up. Existing installs get the patterns through
+  `.git/info/exclude` on the next run, and files already tracked are
+  untracked. A file that is already in a pushed branch or a merged PR stays
+  in the GitHub history: rotate that secret.
+- Security: staged files are scanned for secret-like **content** (private
+  key blocks, GitHub/AWS/Slack/Google tokens, JWTs, inline
+  `password: literal`) and held back from the backup commit, including the
+  initial import. The scan reads what is staged (exactly what would be
+  committed), covers files of any size, and still looks for key blocks and
+  tokens in binary files. Held files stay on the box, are listed in the PR
+  body and in a Home Assistant notification, and fire
+  `ha_gitops_secrets_held`. A run with nothing else to back up ends
+  `warning:secrets_held`. A file whose staged content cannot be read is held
+  back too, and if the scan cannot run at all nothing is pushed
+  (`error:secret_scan`).
+- The initial import now also applies the never-commit list when `/config`
+  already has its own `.gitignore`.
+
 ## 0.4.3
 
 - Fix: a backup touching a few thousand files (for example a removed or
