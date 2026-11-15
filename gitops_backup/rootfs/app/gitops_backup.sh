@@ -357,9 +357,10 @@ untrack_secrets() {
 }
 
 scan_staged_for_secrets() {
-    # Content-level backstop: unstages staged files whose content looks like a
-    # secret (see secret_scan.py) and lists them in HELD. Fails closed: if the
-    # scanner cannot run, the caller must not push anything.
+    # Content-level backstop: unstages files whose staged content (the blob in
+    # the index, exactly what would be committed) looks like a secret, see
+    # secret_scan.py, and lists them in HELD. Fails closed: if the scanner
+    # cannot run or a file cannot be unstaged, the caller must not push.
     HELD=()
     local out label path
     out=$(mktemp)
@@ -369,7 +370,9 @@ scan_staged_for_secrets() {
         log "❌ Secret scan could not run; not backing up"
         return 1
     fi
-    while IFS=$'\t' read -r -d '' label path; do
+    # Two NUL-ended fields per record, read without IFS splitting, so a path
+    # with tabs, newlines or leading/trailing blanks comes through intact.
+    while IFS= read -r -d '' path && IFS= read -r -d '' label; do
         # Only the rule label and the path are logged, never the match
         log "⚠ Secret-like content (${label}) in ${path} — held back from backup"
         if git rev-parse -q --verify HEAD >/dev/null; then
@@ -380,6 +383,13 @@ scan_staged_for_secrets() {
         HELD+=("$path")
     done < "$out"
     rm -f "$out"
+    # A held file that is somehow still staged must never be pushed
+    for path in ${HELD[@]+"${HELD[@]}"}; do
+        if ! git --literal-pathspecs diff --cached --quiet -- "$path"; then
+            log "❌ Could not unstage ${path}; not backing up"
+            return 1
+        fi
+    done
 }
 
 held_report() {

@@ -17,10 +17,14 @@ Ported from upstream askb/ha-gitops (0.4.0 to 0.5.2).
 - Security: staged files are scanned for secret-like **content** (private
   key blocks, GitHub/AWS/Slack/Google tokens, JWTs, inline
   `password: literal`) and held back from the backup commit, including the
-  initial import. Held files stay on the box, are listed in the PR body and
-  in a Home Assistant notification, and fire `ha_gitops_secrets_held`. A run
-  with nothing else to back up ends `warning:secrets_held`. If the scan
-  cannot run, nothing is pushed (`error:secret_scan`).
+  initial import. The scan reads what is staged (exactly what would be
+  committed), covers files of any size, and still looks for key blocks and
+  tokens in binary files. Held files stay on the box, are listed in the PR
+  body and in a Home Assistant notification, and fire
+  `ha_gitops_secrets_held`. A run with nothing else to back up ends
+  `warning:secrets_held`. A file whose staged content cannot be read is held
+  back too, and if the scan cannot run at all nothing is pushed
+  (`error:secret_scan`).
 - The initial import now also applies the never-commit list when `/config`
   already has its own `.gitignore`.
 

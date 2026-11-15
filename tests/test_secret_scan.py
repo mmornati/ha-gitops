@@ -35,28 +35,52 @@ class ScanTest(unittest.TestCase):
             b"api_key: CHANGE_ME\n",
             b"password: short\n",
             b"- alias: Reset password reminder\n  trigger: []\n",
-            b"\0\0binary -----BEGIN PRIVATE KEY-----",
         ):
             self.assertIsNone(secret_scan.scan(data), data)
 
-    def test_cli_reports_label_and_path_only(self):
+    def test_binary_content_still_checked_for_keys_and_tokens(self):
+        self.assertEqual(secret_scan.scan(b"\0\0 -----BEGIN RSA PRIVATE KEY-----"),
+                         "private key block")
+        self.assertIsNone(secret_scan.scan(b"\0\0\npassword: SuperSecretPassw0rd\n"))
+
+    def test_match_across_a_chunk_boundary(self):
+        token = b"ghp_" + b"a" * 36
+        self.assertEqual(secret_scan.scan_chunks(iter([b"x " + token[:20], token[20:] + b" y"])),
+                         "GitHub token")
+
+    def cli(self, tmp, stdin: bytes) -> bytes:
+        return subprocess.run([sys.executable, str(APP / "secret_scan.py")], cwd=tmp,
+                              check=True, input=stdin, capture_output=True).stdout
+
+    def repo(self, tmp):
+        env = dict(os.environ, HOME=tmp, GIT_CONFIG_NOSYSTEM="1")
+        subprocess.run(["git", "init", "-q", tmp], check=True, env=env)
+        return lambda *a: subprocess.run(["git", *a], cwd=tmp, check=True, env=env)
+
+    def test_cli_scans_the_staged_blob_not_the_file_on_disk(self):
         with tempfile.TemporaryDirectory() as tmp:
-            Path(tmp, "bad name.yaml").write_text("password: SuperSecretPassw0rd\n")
+            git = self.repo(tmp)
+            odd = "odd\tname .yaml"  # tab inside, trailing-blank-prone name
+            Path(tmp, odd).write_text("password: SuperSecretPassw0rd\n")
             Path(tmp, "ok.yaml").write_text("password: !secret pw\n")
-            out = subprocess.run(
-                [sys.executable, str(APP / "secret_scan.py")], cwd=tmp, check=True,
-                input=b"bad name.yaml\0ok.yaml\0gone.yaml\0", capture_output=True).stdout
-        self.assertEqual(out, b"inline credential\tbad name.yaml\0")
+            Path(tmp, "swap.yaml").write_text("token: ghp_" + "a" * 36 + "\n")
+            git("add", "-A")
+            # Edited after staging: the index still holds the secret
+            Path(tmp, "swap.yaml").write_text("clean\n")
+            out = self.cli(tmp, os.fsencode(odd) + b"\0ok.yaml\0swap.yaml\0")
+        self.assertEqual(out, os.fsencode(odd) + b"\0inline credential\0"
+                              b"swap.yaml\0GitHub token\0")
         self.assertNotIn(b"SuperSecret", out)
 
-    def test_large_files_are_skipped(self):
+    def test_cli_fails_closed_and_scans_large_files(self):
         with tempfile.TemporaryDirectory() as tmp:
-            big = Path(tmp, "big.yaml")
-            big.write_bytes(b"password: SuperSecretPassw0rd\n" + b"#" * secret_scan.MAX_BYTES)
-            out = subprocess.run(
-                [sys.executable, str(APP / "secret_scan.py")], cwd=tmp, check=True,
-                input=os.fsencode("big.yaml") + b"\0", capture_output=True).stdout
-        self.assertEqual(out, b"")
+            git = self.repo(tmp)
+            Path(tmp, "big.yaml").write_bytes(
+                b"#" * (secret_scan.CHUNK + 100) + b"\npassword: SuperSecretPassw0rd\n")
+            git("add", "-A")
+            out = self.cli(tmp, b"big.yaml\0not-in-index.yaml\0")
+        self.assertEqual(out, b"big.yaml\0inline credential\0"
+                              b"not-in-index.yaml\0content could not be read\0")
 
 
 if __name__ == "__main__":

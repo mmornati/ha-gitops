@@ -302,11 +302,18 @@ echo "$tree" | grep -q "^esphome/plug.yaml$" \
 #     of the drift still goes out, and the value never reaches the log.
 printf 'mqtt:\n  password: SuperSecretPassw0rd\n' > "$TMP/config/mqtt.yaml"
 printf 'mqtt:\n  password: !secret mqtt_password\n' > "$TMP/config/mqtt_ok.yaml"
+# A name with a tab and a trailing blank must be held back all the same
+odd="$TMP/config/$(printf 'odd\tname ').yaml"
+echo "api_key: abcdef1234567890" > "$odd"
 run
 tree=$(git -c safe.bareRepository=all -C "$TMP/origin.git" ls-tree -r --name-only "$newbranch")
 if echo "$tree" | grep -q "^mqtt.yaml$"; then
   echo "FAIL: a file with an inline password was pushed"; exit 1
 fi
+if echo "$tree" | grep -q "odd"; then
+  echo "FAIL: a held file with an unusual name was pushed"; exit 1
+fi
+rm -f "$odd"
 echo "$tree" | grep -q "^mqtt_ok.yaml$" \
   || { echo "FAIL: a file using !secret was held back"; exit 1; }
 [ -f "$TMP/config/mqtt.yaml" ] || { echo "FAIL: held file removed from the box"; exit 1; }
