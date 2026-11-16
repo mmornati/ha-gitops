@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1
+
+- Fix: the app no longer logs `bashio::addon.version is deprecated` at every
+  start; it reads its version the way the current base image expects.
+- The 0.6.0 notes below now list the secret scan fix that shipped with it.
+
 ## 0.6.0
 
 One code base. The git engine was a 1,000-line shell script run by a Python
@@ -23,13 +29,16 @@ are unchanged, so there is nothing to do when updating.
 - Security: the GitHub token is not sent on if the API answers with a
   redirect, and proxies from the environment are ignored. Branch names that
   come back from GitHub are checked before they are given to git.
+- Security: the secret scan now covers every staged file that is not a
+  deletion. A symbolic link replaced by a regular file was not scanned
+  before (also the case in 0.5.x).
 - Security: the panel API refuses request bodies over 64 kB and answers with
   `X-Content-Type-Options: nosniff`.
 - Faster: no more `jq`, `curl` and scanner processes per run; paths are
   handed to git in one call instead of one call per file, also when a stash
   with thousands of files has to be settled.
 - The service stops cleanly on shutdown and stops a run in progress with it.
-- Tests: the shell self-check is replaced by 155 pytest cases against real
+- Tests: the shell self-check is replaced by 156 pytest cases against real
   git repositories (97 % coverage, the build fails under 95 %), with ruff and
   mypy in strict mode.
 

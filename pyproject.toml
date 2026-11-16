@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 [project]
 name = "ha-gitops"
-version = "0.6.0"
+version = "0.6.1"
 description = "PR-gated GitHub sync for a Home Assistant config (HA app)"
 license = "Apache-2.0"
 # The app image is Alpine 3.24 (Python 3.14), the same Python as Home Assistant 2026.11.

@@ -9,6 +9,6 @@
 
 bashio::log.info "HA GitOps starting"
 export BUILD_VERSION
-BUILD_VERSION="$(bashio::addon.version 2>/dev/null || echo dev)"
+BUILD_VERSION="$(bashio::app.version 2>/dev/null || echo dev)"
 cd /app || exit 1
 exec python3 -u -m ha_gitops.controller
