@@ -1,16 +1,23 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for the controller's pure helpers (stdlib only)."""
+"""Unit tests for the pure rule modules (no I/O)."""
 
 import hashlib
 import hmac
 import json
-import sys
 import unittest
-from pathlib import Path
+from types import SimpleNamespace
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "gitops_backup/rootfs/app"))
+from ha_gitops.rules import checks, commands, discovery, ignore, text, timing, webhook
 
-import gitops_core as core  # noqa: E402
+# The helpers used to live in one module; the tests still read them from one name.
+core = SimpleNamespace(
+    **{
+        name: value
+        for module in (checks, commands, discovery, ignore, text, timing, webhook)
+        for name, value in vars(module).items()
+        if not name.startswith("_")
+    }
+)
 
 
 class SignatureTest(unittest.TestCase):
@@ -54,8 +61,10 @@ class ParseCommandTest(unittest.TestCase):
         self.assertEqual(core.parse_command("sync"), ("sync", ""))
         self.assertEqual(core.parse_command('"backup"\n'), ("backup", ""))
         self.assertEqual(core.parse_command(b"pause"), ("pause", ""))
-        self.assertEqual(core.parse_command(json.dumps({"command": "revert", "arg": "ABC1234"})),
-                         ("revert", "abc1234"))
+        self.assertEqual(
+            core.parse_command(json.dumps({"command": "revert", "arg": "ABC1234"})),
+            ("revert", "abc1234"),
+        )
         self.assertEqual(core.parse_command("revert abc1234def"), ("revert", "abc1234def"))
 
     def test_rejects(self):
@@ -68,15 +77,28 @@ class ParseCommandTest(unittest.TestCase):
 
 class WatcherIgnoreTest(unittest.TestCase):
     def test_ignored(self):
-        for path in (".storage/core.entity_registry", ".git/index", "home-assistant_v2.db-wal",
-                     "home-assistant.log", "home-assistant.log.1", "deps/x/y.py",
-                     "custom_components/foo/__pycache__/a.pyc", "zigbee2mqtt/log/2026/log.log",
-                     "gitops_backup.log", "automations.yaml.swp"):
+        for path in (
+            ".storage/core.entity_registry",
+            ".git/index",
+            "home-assistant_v2.db-wal",
+            "home-assistant.log",
+            "home-assistant.log.1",
+            "deps/x/y.py",
+            "custom_components/foo/__pycache__/a.pyc",
+            "zigbee2mqtt/log/2026/log.log",
+            "gitops_backup.log",
+            "automations.yaml.swp",
+        ):
             self.assertTrue(core.watcher_ignores(path), path)
 
     def test_kept(self):
-        for path in ("automations.yaml", "packages/heating.yaml", "dashboards/home.yaml",
-                     "custom_components/foo/sensor.py", "www/card.js"):
+        for path in (
+            "automations.yaml",
+            "packages/heating.yaml",
+            "dashboards/home.yaml",
+            "custom_components/foo/sensor.py",
+            "www/card.js",
+        ):
             self.assertFalse(core.watcher_ignores(path), path)
 
 
@@ -109,7 +131,9 @@ class ChecksTest(unittest.TestCase):
         self.assertEqual(core.summarize_checks(ok, None), "success")
         self.assertEqual(core.summarize_checks(ok, {"statuses": [{"state": "pending"}]}), "pending")
         self.assertEqual(core.summarize_checks(running, None), "pending")
-        self.assertEqual(core.summarize_checks(bad, {"statuses": [{"state": "success"}]}), "failure")
+        self.assertEqual(
+            core.summarize_checks(bad, {"statuses": [{"state": "success"}]}), "failure"
+        )
         self.assertEqual(core.summarize_checks(None, None), "none")
 
 
@@ -117,8 +141,17 @@ class DiscoveryTest(unittest.TestCase):
     def test_entities(self):
         configs = dict(core.discovery_configs("homeassistant", "ha_gitops", "0.4.0"))
         ids = {cfg["unique_id"] for cfg in configs.values()}
-        for key in ("status", "pending_changes", "open_pr", "sync", "backup", "paused",
-                    "auto_apply", "config", "running"):
+        for key in (
+            "status",
+            "pending_changes",
+            "open_pr",
+            "sync",
+            "backup",
+            "paused",
+            "auto_apply",
+            "config",
+            "running",
+        ):
             self.assertIn(f"ha_gitops_{key}", ids)
         for topic, cfg in configs.items():
             self.assertTrue(topic.startswith("homeassistant/") and topic.endswith("/config"), topic)
@@ -126,7 +159,9 @@ class DiscoveryTest(unittest.TestCase):
             self.assertEqual(cfg["availability_topic"], "ha_gitops/availability")
             json.dumps(cfg)
         button = configs["homeassistant/button/ha_gitops/sync/config"]
-        self.assertEqual((button["command_topic"], button["payload_press"]), ("ha_gitops/cmd", "sync"))
+        self.assertEqual(
+            (button["command_topic"], button["payload_press"]), ("ha_gitops/cmd", "sync")
+        )
 
 
 class HardeningTest(unittest.TestCase):
@@ -137,7 +172,9 @@ class HardeningTest(unittest.TestCase):
         self.assertNotIn("sync", core.PANEL_ONLY)
 
     def test_log_safe_cannot_forge_a_log_line(self):
-        self.assertEqual(core.log_safe("sync\n2026-01-01 - Status: success"), "sync 2026-01-01 - Status: success")
+        self.assertEqual(
+            core.log_safe("sync\n2026-01-01 - Status: success"), "sync 2026-01-01 - Status: success"
+        )
         self.assertEqual(core.log_safe("a\rb\x1b[31mc"), "a b?[31mc")
         self.assertEqual(len(core.log_safe("x" * 500)), 200)
         self.assertEqual(core.log_safe(None), "None")
@@ -160,18 +197,22 @@ class HardeningTest(unittest.TestCase):
 
     def test_parse_name_status(self):
         raw = "M\0a.yaml\0R100\0old name\0new\0A\0x\ty\0D\0gone\0"
-        self.assertEqual(core.parse_name_status(raw), [
-            {"path": "a.yaml", "status": "modified", "old": ""},
-            {"path": "new", "status": "renamed", "old": "old name"},
-            {"path": "x\ty", "status": "added", "old": ""},
-            {"path": "gone", "status": "deleted", "old": ""}])
+        self.assertEqual(
+            core.parse_name_status(raw),
+            [
+                {"path": "a.yaml", "status": "modified", "old": ""},
+                {"path": "new", "status": "renamed", "old": "old name"},
+                {"path": "x\ty", "status": "added", "old": ""},
+                {"path": "gone", "status": "deleted", "old": ""},
+            ],
+        )
         self.assertEqual(core.parse_name_status(""), [])
 
     def test_can_merge(self):
         self.assertTrue(core.can_merge("5", "success", False))
         self.assertTrue(core.can_merge("5", "none", False))
-        for checks in ("pending", "failure", "unknown"):
-            self.assertFalse(core.can_merge("5", checks, False))
+        for result in ("pending", "failure", "unknown"):
+            self.assertFalse(core.can_merge("5", result, False))
         self.assertFalse(core.can_merge("", "success", False))
         self.assertFalse(core.can_merge("5", "success", True))
 

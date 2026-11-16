@@ -154,6 +154,31 @@ See the app's **Documentation** tab for setup and every option.
   state (`secrets.yaml`, `.storage/`, databases, apps). See the app
   DOCS for the full "what is backed up where" table and where secrets belong.
 
+## Development
+
+The app is one Python package, `gitops_backup/rootfs/app/ha_gitops`, in four
+layers. A layer only imports from the ones above it.
+
+| Layer | What it holds |
+|---|---|
+| `rules` | Pure decisions, no I/O: what is never committed, what a changed file needs (reload, restart), the PR description, what looks like a secret |
+| `adapters` | The outside world: git, the GitHub API, the Home Assistant API, the files in `/data` |
+| `engine` | One run against `/config`: `python -m ha_gitops.engine` with `GITOPS_MODE` set to `full`, `sync`, `revert` or `discard` |
+| `controller` | The service that decides when the engine runs: schedule, poll, webhook, file watcher, MQTT, panel |
+
+The controller runs the engine as a child process, so a run that hangs can be
+stopped without taking the panel down.
+
+```bash
+uv sync                # Python 3.14 and the pinned tools
+uv run pytest          # tests against real git repositories, fails under 95 % coverage
+uv run ruff check . && uv run mypy
+```
+
+The runtime libraries follow the versions Home Assistant pins. After changing
+them in `pyproject.toml`, run `uv lock` and regenerate
+`gitops_backup/requirements.txt` as its header says.
+
 ## License
 
 Apache-2.0

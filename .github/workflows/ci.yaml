@@ -47,10 +47,10 @@ jobs:
           pip install --quiet yamllint
           yamllint .
 
-  self-check:
-    name: Backup Script Self-Check
+  python:
+    name: Lint, Types, Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a  # v2.22.4
         with:
@@ -58,24 +58,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      - name: Run self-check
-        run: bash tests/self_check.sh
-
-  python-tests:
-    name: Controller Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a  # v2.22.4
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
-          egress-policy: audit
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Unit + controller tests
+          enable-cache: false
+      - name: Install (locked)
+        run: uv sync --locked --python 3.14
+      - name: Ruff
         run: |
-          pip install --quiet aiohttp
-          python3 -m unittest tests/test_core.py tests/test_controller.py tests/test_secret_scan.py
+          uv run --no-sync ruff check .
+          uv run --no-sync ruff format --check .
+      - name: Mypy (strict)
+        run: uv run --no-sync mypy
+      - name: Image requirements match the lock
+        run: |
+          uv export --locked --no-dev --no-emit-project --no-header --no-annotate \
+            | diff - <(grep -v '^# ' gitops_backup/requirements.txt)
+      - name: Tests with coverage (fails under 95%)
+        run: uv run --no-sync pytest
 
   addon-lint:
     name: App Lint
@@ -109,13 +108,21 @@ jobs:
           docker build \
             --build-arg BUILD_FROM=ghcr.io/home-assistant/amd64-base:3.24 \
             -t gitops-backup:test ./gitops_backup
-      - name: Smoke — binaries present
+      - name: Smoke — binaries present, no build tools left
         run: |
           docker run --rm --entrypoint sh gitops-backup:test \
-            -c "command -v git && command -v jq && command -v curl && command -v inotifywait \
-              && bash -n /app/gitops_backup.sh \
-              && bash -c 'exec 9>/tmp/lock && flock -n 9' \
-              && cd /app && python3 -c 'import aiohttp, paho.mqtt.client, controller, secret_scan, refresh_dashboards'"
+            -c "command -v git && command -v inotifywait && ! command -v pip \
+              && cd /app && python3 -c 'import aiohttp, paho.mqtt.client; \
+                import ha_gitops.engine.runner, ha_gitops.controller.service; \
+                print(aiohttp.__version__, paho.mqtt.__version__)'"
+      - name: Tests inside the image (Alpine git, musl, the shipped Python)
+        run: |
+          docker run --rm --entrypoint sh -v "$PWD":/src:ro gitops-backup:test -c "
+            apk add --no-cache py3-pip >/dev/null &&
+            pip install -q --break-system-packages \
+              pytest==9.2.0 pytest-asyncio==1.5.0 pytest-cov==7.1.0 &&
+            cp -r /src /work && cd /work && rm -rf .git .venv &&
+            python3 -m pytest -p no:cacheprovider"
       - name: Trivy — image vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
