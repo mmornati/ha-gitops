@@ -85,10 +85,12 @@ def hold_back_secrets(ctx: RunContext) -> list[str]:
     git, base = ctx.git, ctx.settings.base_ref
     against = [base] if git.rev(base) else []
     try:
-        # --no-renames: a file renamed and edited at once must count as added,
-        # not as a rename the A/M filter would skip.
+        # Every staged entry that is not a deletion: a filter on "added or
+        # modified" would skip a symlink replaced by a regular file, which git
+        # reports as a type change. --no-renames: a file renamed and edited at
+        # once counts as added, with its new content.
         staged = git.records(
-            "diff", "--cached", "--no-renames", "--name-only", "--diff-filter=AM", "-z", *against
+            "diff", "--cached", "--no-renames", "--name-only", "--diff-filter=d", "-z", *against
         )
         found = scan_index(git, staged)
     except (GitError, OSError, ValueError) as err:

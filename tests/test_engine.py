@@ -818,3 +818,19 @@ def test_revert_pr_for_an_invalid_config_is_best_effort(tmp_path: Path, api: Fak
     box.options["dry_run"] = False
     box.run("sync", DRY_RUN_OVERRIDE="true")
     assert len(box.remote_branches()) == 1
+
+
+def test_symlink_replaced_by_a_file_with_a_secret_is_still_scanned(box: Box) -> None:
+    """git reports it as a type change, neither an addition nor a modification."""
+    (box.config / "link.yaml").symlink_to("configuration.yaml")
+    box.run()
+    box.merge_backup()
+    box.run("sync")
+    (box.config / "link.yaml").unlink()
+    box.write("link.yaml", SECRET)
+    box.write("other.yaml", "1\n")
+    assert box.run() == 0
+    assert box.status()["held"] == ["link.yaml"]
+    tree = box.ogit("ls-tree", "-r", box.open_pr()[0])
+    assert "120000" in next(line for line in tree.splitlines() if line.endswith("link.yaml"))
+    assert "other.yaml" in box.remote_files(box.open_pr()[0])
