@@ -7,39 +7,44 @@
 <meta name="color-scheme" content="light dark">
 <title>HA GitOps</title>
 <style>
+  /* Colours follow Home Assistant. These are its default light and dark
+     values; inside Home Assistant the script below replaces them with the
+     ones of the theme in use (syncTheme), custom themes included. */
   :root {
-    /* the bay: painted metal the strips sit on */
-    --bay: #d7ddd8; --rail: #c6cec8; --rail-edge: #a9b4ad;
-    --on-bay: #17201d; --on-bay-muted: #44504b;
-    /* the strips: paper in holders */
-    --strip: #fbfaf4; --strip-ink: #1a211f; --strip-muted: #5a635d; --strip-rule: #dcd9cb;
-    --strip-shadow: 0 1px 0 rgb(23 32 29 / .18), 0 3px 8px -3px rgb(23 32 29 / .35);
-    /* state fields */
-    --fresh: #e5a31c; --fresh-ink: #2a1c00;
-    --review: #4a8be0; --review-ink: #041b38;
-    --held: #e5695e; --held-ink: #2b0703;
-    --landed: #33a06d; --landed-ink: #03231a;
-    --add: #d3ecd0; --del: #f6d6d0; --hunk: #e9e6da;
-    --focus: #0b4fb3;
+    /* canvas, cards, lines, text */
+    --bay: #fafafa; --rail: #ffffff; --on-bay: #212121;
+    --rail-edge: color-mix(in srgb, var(--on-bay) 13%, var(--rail));
+    --on-bay-muted: color-mix(in srgb, var(--on-bay) 74%, var(--rail));
+    /* a strip: one step off the card */
+    --strip: color-mix(in srgb, var(--on-bay) 5%, var(--rail));
+    --strip-ink: var(--on-bay); --strip-muted: var(--on-bay-muted); --strip-rule: var(--rail-edge);
+    --strip-shadow: 0 0 0 1px var(--rail-edge);
+    /* state fields: Home Assistant's warning, info, error and success */
+    --fresh: #ffa600; --fresh-ink: #141414;
+    --review: #039be5; --review-ink: #141414;
+    --held: #db4437; --held-ink: #141414;      /* ink on the light hatch */
+    --held-fill: #bc3a2f; --held-fill-ink: #ffffff;  /* solid error fields, a step darker */
+    --landed: #43a047; --landed-ink: #141414;
+    /* the one accent: primary action, switches */
+    --accent: #03a9f4; --accent-ink: #141414;
+    --add: color-mix(in srgb, var(--landed) 20%, var(--strip));
+    --del: color-mix(in srgb, var(--held) 18%, var(--strip));
+    --hunk: color-mix(in srgb, var(--on-bay) 9%, var(--strip));
+    --plus: color-mix(in srgb, var(--landed) 62%, var(--on-bay));
+    --minus: color-mix(in srgb, var(--held) 70%, var(--on-bay));
+    --focus: var(--on-bay);
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
     --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
     --ease: cubic-bezier(.16, 1, .3, 1);
   }
   @media (prefers-color-scheme: dark) {
-    :root {
-      --bay: #121a18; --rail: #1b2624; --rail-edge: #2c3b38;
-      --on-bay: #e1e8e4; --on-bay-muted: #98a8a2;
-      --strip: #ebe6d8; --strip-ink: #171e1c; --strip-muted: #555e58; --strip-rule: #cdc6b3;
-      --strip-shadow: 0 1px 0 rgb(0 0 0 / .5), 0 4px 10px -4px rgb(0 0 0 / .7);
-      --fresh: #f0b23a; --review: #6aa6f0; --held: #ee7468; --landed: #4dbb84;
-      --add: #cfe6cb; --del: #f1cfc8; --hunk: #ddd7c6;
-      --focus: #f0b23a;
-    }
+    :root { --bay: #111111; --rail: #1c1c1c; --on-bay: #e1e1e1;
+            --rail-edge: color-mix(in srgb, var(--on-bay) 16%, var(--rail)); }
   }
   * { box-sizing: border-box; }
   html { scrollbar-color: var(--rail-edge) var(--bay); }
   body { margin: 0; background: var(--bay); color: var(--on-bay); font: 15px/1.5 var(--sans);
-         -webkit-text-size-adjust: 100%; accent-color: var(--review); caret-color: var(--review); }
+         -webkit-text-size-adjust: 100%; accent-color: var(--accent); caret-color: var(--accent); }
   ::selection { background: var(--fresh); color: var(--fresh-ink); }
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
@@ -64,8 +69,8 @@
   .end code { font-size: 17px; font-weight: 700; }
   .wire { position: relative; height: 26px; display: grid; place-items: center; overflow: hidden; }
   .wire::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: var(--rail-edge); }
-  .wire b { position: relative; padding: 0 10px; font: 700 12.5px/26px var(--sans); border-radius: 3px; white-space: nowrap;
-            background: var(--rail-edge); color: var(--on-bay); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .wire b { position: relative; padding: 0 10px; font: 700 12.5px/26px var(--sans); border-radius: 8px; white-space: nowrap;
+            background: color-mix(in srgb, var(--on-bay) 14%, var(--bay)); color: var(--on-bay); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .wire[data-link="equal"] b { background: var(--landed); color: var(--landed-ink); }
   .wire[data-link="drift"] b { background: var(--fresh); color: var(--fresh-ink); }
   .wire[data-link="behind"] b, .wire[data-link="running"] b { background: var(--review); color: var(--review-ink); }
@@ -80,47 +85,46 @@
   .when { color: var(--on-bay-muted); font-size: 13px; }
   .attention { display: grid; gap: 8px; margin-top: 16px; }
   .attention li { display: grid; grid-template-columns: 104px minmax(0, 1fr) auto; align-items: center; gap: 0 14px;
-                  background: var(--strip); color: var(--strip-ink); border-radius: 3px; box-shadow: var(--strip-shadow); }
+                  background: var(--rail); color: var(--strip-ink); border-radius: 8px; box-shadow: var(--strip-shadow); }
   .attention .flag { display: flex; align-items: center; gap: 6px; align-self: stretch; grid-row: 1 / span 2;
-                     padding: 0 12px; border-radius: 3px 0 0 3px; font-size: 12px; font-weight: 700; }
+                     padding: 0 12px; border-radius: 8px 0 0 8px; font-size: 12px; font-weight: 700; }
   .attention .key { margin: 8px 10px 8px 0; }
   .attention .acts { display: flex; flex-wrap: wrap; }
-  .attention [data-tone="error"] .flag { background: var(--held); color: var(--held-ink); }
+  .attention [data-tone="error"] .flag { background: var(--held-fill); color: var(--held-fill-ink); }
   .attention [data-tone="warn"] .flag { background: var(--fresh); color: var(--fresh-ink); }
   .attention [data-tone="info"] .flag { background: var(--review); color: var(--review-ink); }
   .attention [data-tone="held"] .flag, [data-bay="held"] .field {
-    background: repeating-linear-gradient(135deg, var(--held) 0 6px, color-mix(in srgb, var(--held) 72%, #fff) 6px 12px);
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--held) 80%, #fff) 0 6px, color-mix(in srgb, var(--held) 52%, #fff) 6px 12px);
     color: var(--held-ink); }
   .strip :focus-visible, .attention :focus-visible, dialog :focus-visible, #toast :focus-visible { outline-color: var(--strip-ink); }
   .attention p { padding: 10px 0; min-width: 0; overflow-wrap: anywhere; }
   .keys { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 22px; }
   .keys .gap { flex: 1 1 24px; }
   .key { font: 600 14px/1 var(--sans); min-height: 38px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px;
-         border: 1px solid var(--rail-edge); border-radius: 3px; background: var(--rail); color: var(--on-bay); cursor: pointer;
+         border: 1px solid var(--rail-edge); border-radius: 8px; background: var(--rail); color: var(--on-bay); cursor: pointer;
          transition: background .15s var(--ease), transform .15s var(--ease), border-color .15s var(--ease); }
   a.key { text-decoration: none; }
   .key:hover:not(:disabled) { border-color: var(--on-bay-muted); }
   .key:active:not(:disabled) { transform: translateY(1px); }
   .key:disabled { opacity: .45; cursor: default; }
-  .key.primary { background: var(--strip); color: var(--strip-ink); border-color: var(--strip); box-shadow: var(--strip-shadow); }
-  .key.danger { background: var(--held); color: var(--held-ink); border-color: var(--held); }
+  .key.primary, .key.ink { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .key.danger { background: var(--held-fill); color: var(--held-fill-ink); border-color: var(--held-fill); }
   .key.onpaper { background: transparent; color: var(--strip-ink); border-color: var(--strip-muted); min-height: 34px; }
   .key.onpaper:hover:not(:disabled) { border-color: var(--strip-ink); background: color-mix(in srgb, var(--strip-ink) 7%, transparent); }
-  .key.ink { background: var(--strip-ink); color: var(--strip); border-color: var(--strip-ink); }
   .switch { font: 500 14px/1 var(--sans); min-height: 38px; display: inline-flex; align-items: center; gap: 10px;
             background: none; border: 0; color: var(--on-bay); cursor: pointer; padding: 0 4px; }
-  .switch .track { width: 38px; height: 22px; border-radius: 11px; background: var(--rail-edge); position: relative;
+  .switch .track { width: 38px; height: 22px; border-radius: 11px; background: color-mix(in srgb, var(--on-bay) 52%, var(--rail)); position: relative;
                    transition: background .2s var(--ease); flex: none; }
   .switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
-                          background: var(--strip); box-shadow: 0 1px 2px rgb(0 0 0 / .35); transition: transform .2s var(--ease); }
-  .switch[aria-checked="true"] .track { background: var(--landed); }
+                          background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .35); transition: transform .2s var(--ease); }
+  .switch[aria-checked="true"] .track { background: var(--accent); }
   .switch[aria-checked="true"] .track::after { transform: translateX(16px); }
 
   /* ---- bays -------------------------------------------------------------- */
   .bays { display: grid; gap: 16px; margin-top: 30px; align-items: start; }
   @media (min-width: 720px) { .bays { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bay.wide { grid-column: 1 / -1; } }
   @media (min-width: 1080px) { .bays { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  .bay { min-width: 0; background: var(--rail); border-top: 3px solid var(--rail-edge); border-radius: 0 0 3px 3px; padding: 10px 12px 12px; }
+  .bay { min-width: 0; background: var(--rail); border: 1px solid var(--rail-edge); border-radius: 12px; padding: 12px; }
   .bay { scroll-margin-top: 84px; }
   .bay > header { display: flex; align-items: baseline; gap: 10px; padding: 2px 2px 10px; }
   .bay h2 { font-size: 14px; font-weight: 700; }
@@ -138,17 +142,17 @@
 
   /* ---- strips ------------------------------------------------------------ */
   .strips { display: grid; gap: 6px; }
-  .strip { background: var(--strip); color: var(--strip-ink); border-radius: 3px; box-shadow: var(--strip-shadow); min-width: 0; }
+  .strip { background: var(--strip); color: var(--strip-ink); border-radius: 8px; box-shadow: var(--strip-shadow); min-width: 0; }
   .strip > .row { width: 100%; display: grid; grid-template-columns: 62px minmax(0, 1fr) auto auto; align-items: stretch;
                   gap: 0 10px; border: 0; background: none; color: inherit; font: inherit; text-align: left; padding: 0;
-                  min-height: 42px; cursor: pointer; border-radius: 3px; }
+                  min-height: 42px; cursor: pointer; border-radius: 8px; }
   .strip > div.row { cursor: default; }
   .strip > button.row { transition: background .15s var(--ease); }
   .strip > button.row:hover { background: color-mix(in srgb, var(--strip-ink) 7%, transparent); }
-  .strip:has(> [aria-expanded="true"]) { box-shadow: var(--strip-shadow), 0 14px 28px -14px rgb(0 0 0 / .55); }
+  .strip:has(> [aria-expanded="true"]) { box-shadow: var(--strip-shadow), 0 12px 24px -14px rgb(0 0 0 / .45); }
   .strip.mark { outline: 2px solid var(--held); outline-offset: 2px; }
   .field { display: grid; place-items: center; font: 700 11px/1 var(--sans); letter-spacing: .05em; text-transform: uppercase;
-           border-radius: 3px 0 0 3px; background: var(--fresh); color: var(--fresh-ink); }
+           border-radius: 8px 0 0 8px; background: var(--fresh); color: var(--fresh-ink); }
   [data-bay="review"] .field { background: var(--review); color: var(--review-ink); }
   [data-bay="landed"] .row { grid-template-columns: 76px minmax(0, 1fr) auto; }
   [data-bay="landed"] .field { background: var(--landed); color: var(--landed-ink); font: 600 12px var(--mono);
@@ -158,7 +162,7 @@
   .path .name { font-weight: 700; }
   .path .was { display: block; color: var(--strip-muted); font-size: 12px; }
   .delta { align-self: center; font: 600 12px var(--mono); white-space: nowrap; color: var(--strip-muted); }
-  .delta .a { color: #1c6b3a; } .delta .d { color: #a02a1f; }
+  .delta .a { color: var(--plus); } .delta .d { color: var(--minus); }
   .chev { align-self: center; margin-right: 10px; color: var(--strip-muted); transition: transform .2s var(--ease); }
   .row[aria-expanded="true"] .chev { transform: rotate(90deg); }
   .strip .what { align-self: center; padding: 6px 0; min-width: 0; }
@@ -167,7 +171,7 @@
   .strip .act { align-self: center; margin-right: 8px; }
   .more { color: var(--on-bay-muted); font-size: 13px; padding: 8px 2px 0; }
   .diff { border-top: 1px solid var(--strip-rule); margin: 0; max-height: 440px; overflow: auto; font: 12px/1.5 var(--mono);
-          scrollbar-color: var(--strip-muted) var(--strip); border-radius: 0 0 3px 3px; tab-size: 2; }
+          scrollbar-color: var(--strip-muted) var(--strip); border-radius: 0 0 8px 8px; tab-size: 2; }
   .diff { animation: unfold .22s var(--ease); }
   @keyframes unfold { from { clip-path: inset(0 0 100% 0); opacity: .3; } }
   .diff span { display: block; padding: 0 12px; white-space: pre; min-width: max-content; }
@@ -176,7 +180,7 @@
   .diff .n { color: var(--strip-muted); font-family: var(--sans); padding: 10px 12px; white-space: normal; min-width: 0; }
 
   /* ---- log --------------------------------------------------------------- */
-  details.log { margin-top: 16px; background: var(--rail); border-top: 3px solid var(--rail-edge); border-radius: 0 0 3px 3px; scroll-margin-top: 84px; }
+  details.log { margin-top: 16px; background: var(--rail); border: 1px solid var(--rail-edge); border-radius: 12px; scroll-margin-top: 84px; }
   details.log summary { cursor: pointer; padding: 12px 14px; font-weight: 700; font-size: 14px; list-style: none;
                         display: flex; align-items: center; gap: 8px; }
   details.log summary::-webkit-details-marker { display: none; }
@@ -187,19 +191,19 @@
   footer { margin-top: 22px; color: var(--on-bay-muted); font-size: 12.5px; }
 
   /* ---- dialog + toast ---------------------------------------------------- */
-  dialog { border: 0; border-radius: 6px; padding: 0; background: var(--strip); color: var(--strip-ink);
+  dialog { border: 0; border-radius: 12px; padding: 0; background: var(--rail); color: var(--on-bay);
            width: min(440px, calc(100vw - 32px)); box-shadow: 0 24px 60px -12px rgb(0 0 0 / .6); }
-  dialog::backdrop { background: rgb(8 14 12 / .6); }
+  dialog::backdrop { background: rgb(0 0 0 / .55); }
   dialog form { padding: 20px; display: grid; gap: 12px; }
   dialog h2 { font-size: 18px; line-height: 1.25; }
   dialog p { color: var(--strip-muted); }
   dialog .rail { justify-content: flex-end; margin-top: 6px; }
-  #toast { position: fixed; left: 50%; bottom: 20px; translate: -50% 12px; background: var(--strip); color: var(--strip-ink);
-           padding: 10px 14px; border-radius: 3px; box-shadow: var(--strip-shadow), 0 12px 30px -10px rgb(0 0 0 / .5);
+  #toast { position: fixed; left: 50%; bottom: 20px; translate: -50% 12px; background: var(--on-bay); color: var(--bay);
+           padding: 10px 14px; border-radius: 8px; box-shadow: 0 12px 30px -10px rgb(0 0 0 / .5);
            font-weight: 600; max-width: calc(100vw - 32px); opacity: 0; pointer-events: none; z-index: 10;
            transition: opacity .2s var(--ease), translate .2s var(--ease); }
   #toast.on { opacity: 1; translate: -50% 0; }
-  #toast[data-tone="error"] { background: var(--held); color: var(--held-ink); }
+  #toast[data-tone="error"] { background: var(--held-fill); color: var(--held-fill-ink); }
 
   @media (max-width: 560px) {
     main { padding: 0 14px 48px; }
@@ -304,6 +308,47 @@
 
 <script>
 "use strict";
+/* Inside Home Assistant the panel is an iframe on the same origin, so it can
+   read the theme the user picked (light, dark or a custom one) and wear it.
+   Opened on its own it keeps the default light and dark values in the CSS. */
+const THEME = {"--bay": "--primary-background-color", "--rail": "--card-background-color", "--on-bay": "--primary-text-color",
+  "--accent": "--primary-color", "--fresh": "--warning-color", "--review": "--info-color", "--held": "--error-color", "--landed": "--success-color"};
+const INKED = ["--accent", "--fresh", "--review", "--held", "--landed"];
+let themeKey = "";
+function syncTheme() {
+  let theirs;
+  try { if (window.parent === window) return; theirs = getComputedStyle(window.parent.document.documentElement); }
+  catch (e) { return; }                                   // not same-origin: keep the defaults
+  const picked = Object.entries(THEME).map(([ours, ha]) => [ours, theirs.getPropertyValue(ha).trim()]);
+  const key = picked.map((p) => p[1]).join("|");
+  if (key === themeKey || !picked[0][1]) return;
+  themeKey = key;
+  const root = document.documentElement, probe = document.createElement("span");
+  document.body.appendChild(probe);
+  const rgb = (value) => { probe.style.color = ""; probe.style.color = value; return (getComputedStyle(probe).color.match(/[\d.]+/g) || []).map(Number); };
+  const light = (c) => { const [r, g, b] = c.map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
+  for (const [ours, value] of picked) if (value && rgb(value).length >= 3) root.style.setProperty(ours, value);
+  // A solid line between cards whatever the theme's translucent divider is
+  const bay = rgb(getComputedStyle(root).getPropertyValue("--bay"));
+  if (bay.length >= 3) {
+    const dark = light(bay) < .2;
+    root.style.setProperty("--rail-edge", `color-mix(in srgb, var(--on-bay) ${dark ? 16 : 13}%, var(--rail))`);
+    root.style.colorScheme = dark ? "dark" : "light";
+  }
+  // Ink on each coloured field: whichever of near-black and white reads better
+  const ink = (c) => { const l = light(c); return (l + .05) / .0575 >= 1.05 / (l + .05) ? "#141414" : "#ffffff"; };
+  for (const name of INKED) {
+    const c = rgb(getComputedStyle(root).getPropertyValue(name));
+    if (c.length >= 3 && name !== "--held") root.style.setProperty(name + "-ink", ink(c));
+  }
+  const held = rgb(getComputedStyle(root).getPropertyValue("--held"));
+  if (held.length >= 3) {                       // solid error fields: a step darker, so white ink reads
+    const fill = held.slice(0, 3).map((v) => Math.round(v * .86));
+    root.style.setProperty("--held-fill", `rgb(${fill.join(" ")})`);
+    root.style.setProperty("--held-fill-ink", ink(fill));
+  }
+  probe.remove();
+}
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 const icon = (n) => `<svg class="i" aria-hidden="true"><use href="#i-${n}"/></svg>`;
@@ -589,6 +634,7 @@ function paint(fn) {
 
 // ---- polling ---------------------------------------------------------------
 async function poll() {
+  syncTheme();
   try {
     const s = await api("api/state");
     const json = JSON.stringify(s), wasOffline = offline;
@@ -683,6 +729,7 @@ document.addEventListener("click", async (e) => {
 $("#log-box").addEventListener("toggle", (e) => { if (e.target.open) loadLog(); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
 
+syncTheme();
 poll();
 setInterval(() => { if (!document.hidden) poll(); }, 5000);
 </script>
