@@ -33,6 +33,16 @@ INOTIFY_EXCLUDE = (r"(/\.git/|/\.git$|/\.storage/|/\.cloud/|/deps/|/tts/|"
                    r"\.log(\.[0-9]+)?$)")
 
 
+def log_safe(value, limit: int = 200) -> str:
+    """A value from outside (a command, an address), safe to put in a log line.
+
+    Line breaks and other control characters are replaced, so the value
+    cannot start a forged log entry, and it is cut to `limit` characters.
+    """
+    text = str(value).replace("\r", " ").replace("\n", " ")
+    return "".join(ch if ch.isprintable() else "?" for ch in text)[:limit]
+
+
 def verify_signature(secret: str, body: bytes, header: str | None) -> bool:
     """Checks GitHub's X-Hub-Signature-256 header against the shared secret."""
     if not secret or not header or not header.startswith("sha256="):
@@ -88,6 +98,8 @@ def parse_command(raw) -> tuple[str, str] | None:
         arg = arg.lower()
         if not SHA_RE.match(arg):
             return None
+    else:
+        arg = ""  # no other command takes an argument: never carry free text along
     return cmd, arg
 
 
