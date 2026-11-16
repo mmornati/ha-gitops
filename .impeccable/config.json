@@ -1,1 +1,18 @@
-{"buildPath": "code"}
+{
+  "buildPath": "code",
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "site/index.html"
+        ],
+        "createdAt": "2026-11-16T06:22:03.047Z",
+        "reason": "builder: the install steps' numbered field is flush to the strip edge on purpose, like every state field in DESIGN.md (Field Only); the text beside it has its own inset"
+      }
+    ]
+  }
+}

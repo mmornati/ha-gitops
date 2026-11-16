@@ -59,8 +59,9 @@ tracking with review, not a disaster-recovery backup.
 
 ## Evidence on Hand
 
-Real state comes from the app's own API. There are no screenshots, testimonials
-or marketing assets, and none should be invented.
+Real state comes from the app's own API. `site/assets/` holds real screenshots of
+the panel (demo data, both themes, desktop and phone). There are no testimonials,
+numbers or logos, and none should be invented.
 
 ## Product Principles
 

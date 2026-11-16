@@ -16,7 +16,7 @@ upstream are best reported to <https://github.com/askb/ha-gitops> as well.
 
 ## What the app protects
 
-- The GitHub token is read from Supervisor-encrypted options and handed to
+- The GitHub token is read from the app's options (a masked password field) and handed to
   git through an askpass helper and to `curl` through a header on a pipe.
   It is never written to `.git/config`, the log or a command line.
 - `secrets.yaml` (and copies), `.storage/`, `.cloud/`, keys, tokens and

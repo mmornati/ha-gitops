@@ -290,6 +290,6 @@ VIDEO.create({
            accent: P.fresh, accent2: P.review, good: P.landed, warn: P.fresh, bad: P.held },
   background: () => { ctx.fillStyle = P.bay; ctx.fillRect(0, 0, W, H); },
   strings: STR,
-  poster: "install",
+  poster: "back",
   scenes: { drift: sDrift, idea: sIdea, out: sOut, checked: sChecked, back: sBack, secrets: sSecrets, install: sInstall },
 });

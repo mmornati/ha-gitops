@@ -50,6 +50,7 @@
   .top .wrap { display: flex; align-items: center; gap: 8px 22px; min-height: 60px; flex-wrap: wrap; }
   .mark { font-weight: 800; letter-spacing: -.01em; text-decoration: none; display: inline-flex; align-items: center; gap: 9px; margin-right: auto; }
   .mark i { width: 22px; height: 16px; border-radius: 2px; background: linear-gradient(90deg, var(--fresh) 0 34%, var(--strip) 34%); box-shadow: var(--strip-shadow); }
+  .top .cta { display: none; }
   .top nav { display: flex; gap: 4px 18px; flex-wrap: wrap; font-size: 15px; }
   .top nav a { text-decoration: none; color: var(--on-bay-muted); padding: 6px 0; }
   .top nav a:hover { color: var(--on-bay); text-decoration: underline; }
@@ -69,7 +70,7 @@
   /* ---- hero ------------------------------------------------------------ */
   .hero { padding-top: clamp(28px, 4.5vw, 56px); padding-bottom: 30px; }
   .hero h1 { font-size: clamp(2.4rem, 5.2vw, 4.4rem); line-height: 1; letter-spacing: -.035em; font-weight: 800; max-width: 19ch; text-wrap: balance; }
-  .hero h1 em { font-style: normal; background: var(--fresh); color: var(--fresh-ink); padding: 0 .12em; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  .hero h1 em { font-style: normal; background: var(--review); color: var(--review-ink); padding: 0 .12em; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
   .hero .lede { font-size: clamp(1.1rem, 1.6vw, 1.35rem); max-width: 34em; margin: 20px 0 24px; color: var(--on-bay); }
   .hero .fine { color: var(--on-bay-muted); font-size: 14.5px; margin-top: 14px; }
 
@@ -89,9 +90,12 @@
   .sides { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 28px; position: relative; margin-top: 16px; }
   .sides::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: var(--rail-edge); }
   .side { min-width: 0; }
-  .bay { background: var(--rail); border-top: 3px solid var(--rail-edge); border-radius: 0 0 3px 3px; padding: 10px 12px 12px; margin-bottom: 12px; min-height: 76px; }
-  .bay h3 { font-size: 14px; font-weight: 700; padding: 2px 2px 8px; display: flex; gap: 8px; align-items: baseline; }
-  .bay h3 small { font-weight: 500; color: var(--on-bay-muted); font-size: 13px; }
+  .bay { background: var(--rail); border-top: 3px solid var(--rail-edge); border-radius: 0 0 3px 3px; padding: 10px 12px 12px; margin-bottom: 12px; min-height: 100px; }
+  .bay.tall { min-height: 148px; }
+  .demo { display: flex; flex-direction: column; }
+  .sidelbl { display: none; font-size: 13px; font-weight: 700; color: var(--on-bay-muted); padding: 0 2px 6px; }
+  .bay .bt { font-size: 14px; font-weight: 700; padding: 2px 2px 8px; display: flex; gap: 8px; align-items: baseline; }
+  .bay .bt small { font-weight: 500; color: var(--on-bay-muted); font-size: 13px; }
   .bay .empty { color: var(--on-bay-muted); font-size: 14px; padding: 2px; }
   .strips { display: grid; gap: 6px; }
   .strip { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; align-items: stretch; gap: 0 10px; min-height: 42px;
@@ -110,8 +114,10 @@
   .caption p { font-size: 18px; font-weight: 600; min-height: 3.2em; }
   .caption p span { display: block; font-weight: 400; font-size: 15.5px; color: var(--on-bay-muted); }
   .steps { display: flex; gap: 6px; align-items: center; }
-  .steps button { width: 34px; height: 34px; padding: 0; justify-content: center; font: 700 13px var(--mono); }
-  ::view-transition-group(*) { animation-duration: .5s; animation-timing-function: cubic-bezier(.16, 1, .3, 1); }
+  .steps button { width: 34px; height: 34px; padding: 0; justify-content: center; font-weight: 700; font-size: 13px; font-variant-numeric: tabular-nums; }
+  :root { view-transition-name: none; }
+  ::view-transition { pointer-events: none; }
+  ::view-transition-group(*) { animation-duration: .25s; animation-timing-function: cubic-bezier(.16, 1, .3, 1); }
 
   /* ---- sections --------------------------------------------------------- */
   section { padding: clamp(56px, 8vw, 104px) 0 0; }
@@ -121,23 +127,24 @@
   .ledger::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: var(--rail-edge); }
   .row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 56px; padding: 22px 0; border-top: 1px solid var(--rail-edge); position: relative; }
   .row > .n { position: absolute; left: 50%; top: 20px; translate: -50% 0; width: 30px; height: 30px; display: grid; place-items: center;
-              border-radius: 3px; background: var(--strip); color: var(--strip-ink); font: 700 14px var(--mono); box-shadow: var(--strip-shadow); }
-  .cell h3 { font-size: 13px; font-weight: 700; color: var(--on-bay-muted); margin-bottom: 4px; }
+              border-radius: 3px; background: var(--strip); color: var(--strip-ink); font-weight: 700; font-size: 14px; box-shadow: var(--strip-shadow); }
+  .cell h3 { display: none; font-size: 13px; font-weight: 700; color: var(--on-bay-muted); margin-bottom: 4px; }
+  .cell h3.t { display: block; font-size: 18px; color: var(--on-bay); margin-bottom: 6px; }
+  .heads { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 56px; padding-bottom: 10px; font-size: 14px; font-weight: 700; }
   .cell p { max-width: 30em; }
   .cell p strong { font-weight: 700; }
-  .cell:nth-child(2) { text-align: right; }
-  .cell:nth-child(2) p { margin-left: auto; }
-  .cell.r { grid-column: 2; text-align: left; } .cell.r p { margin-left: 0; }
 
   /* ---- panel shots ------------------------------------------------------ */
   .shots { margin-top: 34px; display: grid; grid-template-columns: minmax(0, 3.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
   .shots figure { background: var(--rail); border-top: 3px solid var(--rail-edge); padding: 10px; border-radius: 0 0 3px 3px; }
   .shots img { border-radius: 2px; width: 100%; }
   .shots figcaption, .note { font-size: 14.5px; color: var(--on-bay-muted); padding: 10px 2px 2px; }
-  .points { margin-top: 26px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 6px 28px; }
-  .points li { padding: 12px 0; border-top: 1px solid var(--rail-edge); }
-  .points b { display: block; }
-  .points span { color: var(--on-bay-muted); font-size: 15.5px; }
+  .opened { margin-top: 20px; max-width: 760px; }
+  .opened .strip { border-radius: 3px 3px 0 0; }
+  .opened .diff { background: var(--strip); color: var(--strip-ink); box-shadow: var(--strip-shadow); border-radius: 0 0 3px 3px; border-top: 1px solid var(--strip-rule);
+                  font: 13px/1.6 var(--mono); overflow: auto; }
+  .diff > span { display: block; padding: 0 14px; white-space: pre; min-width: max-content; }
+  .diff .a { background: #cfe6cb; } .diff .h { background: #ddd7c6; color: var(--strip-muted); }
 
   /* ---- configure -------------------------------------------------------- */
   .two { margin-top: 34px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 28px; align-items: start; }
@@ -154,8 +161,8 @@
   .install { margin-top: 34px; display: grid; gap: 8px; counter-reset: s; }
   .install li { counter-increment: s; display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 0 16px; align-items: center;
                 background: var(--strip); color: var(--strip-ink); border-radius: 3px; box-shadow: var(--strip-shadow); min-height: 84px; }
-  .install li::before { content: counter(s); align-self: stretch; display: grid; place-items: center; font: 800 22px var(--mono);
-                        background: var(--landed); color: var(--landed-ink); border-radius: 3px 0 0 3px; }
+  .install li::before { content: counter(s); align-self: stretch; display: grid; place-items: center; font-weight: 800; font-size: 22px;
+                        background: var(--strip-ink); color: var(--strip); border-radius: 3px 0 0 3px; }
   .install .t { padding: 14px 0; }
   .install .t b { font-size: 18px; display: block; }
   .install .t span { color: var(--strip-muted); font-size: 15.5px; }
@@ -178,12 +185,19 @@
     body { font-size: 16px; }
     .wrap { padding: 0 16px; }
     .top nav { display: none; }
+    .top .cta { display: inline-flex; }
+    .sidelbl { display: block; }
+    .side + .side { border-top: 2px solid var(--rail-edge); padding-top: 12px; }
+    .demo .caption { order: -1; margin: 14px 0 4px; }
+    .demo .rule { order: -2; }
+    .cell h3 { display: block; }
+    .heads { display: none; }
     .sides, .row, .shots, .two { grid-template-columns: minmax(0, 1fr); }
     .sides::before, .ledger::before { display: none; }
     .side + .side { margin-top: 4px; }
-    .row { gap: 14px; padding-left: 44px; }
+    .row { gap: 14px; }
+    .row:has(> .n) { padding-left: 44px; }
     .row > .n { left: 0; translate: 0 0; }
-    .cell:nth-child(2), .cell.r { text-align: left; grid-column: 1; } .cell:nth-child(2) p { margin-left: 0; }
     .caption { grid-template-columns: minmax(0, 1fr); }
     .shots figure.phone { max-width: 260px; }
     .install li { grid-template-columns: 48px minmax(0, 1fr); }
@@ -209,6 +223,7 @@
 <header class="top">
   <div class="wrap">
     <a class="mark" href="#top"><i></i>HA GitOps</a>
+    <a class="key small cta" href="#install">Install</a>
     <nav aria-label="Sections">
       <a href="#why">Why</a><a href="#how">How it works</a><a href="#secrets">Secrets</a><a href="#panel">The panel</a>
       <a href="#configure">Configure</a><a href="#video">Video</a><a href="#install">Install</a>
@@ -220,13 +235,14 @@
 <main id="top">
   <div class="wrap hero">
     <h1>Your Home Assistant config, <em>one pull request</em> at a time.</h1>
-    <p class="lede">HA GitOps is a Home Assistant app. An edit on your box becomes a pull request on GitHub; a pull request you merge comes back and is applied to the running Home Assistant. Nothing reaches main unreviewed, and your secrets never leave the house.</p>
+    <p class="lede">A Home Assistant app: an edit on your box becomes a pull request on GitHub, and a pull request you merge comes back applied to the running Home Assistant.</p>
     <div class="keys">
       <a class="key primary" href="https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmmornati%2Fha-gitops"><svg class="i"><use href="#i-plus"/></svg>Add to Home Assistant</a>
       <a class="key" href="#video"><svg class="i"><use href="#i-play"/></svg>Watch the video</a>
     </div>
-    <p class="fine">Free, Apache-2.0. Works with any GitHub account, private repositories included.</p>
+    <p class="fine">Nothing reaches main unreviewed. Secrets never leave the house. Free, Apache-2.0, private repositories included.</p>
 
+    <div class="demo">
     <div class="rule" role="group" aria-label="Demo: where the box and GitHub stand">
       <div class="end"><span class="lbl">The box</span><code id="d-box">4c5a275</code></div>
       <div class="wire"><span class="field" id="d-field">in agreement</span></div>
@@ -234,21 +250,24 @@
     </div>
     <div class="sides" id="demo">
       <div class="side">
-        <div class="bay"><h3>Not backed up</h3><div id="d-fresh"></div></div>
-        <div class="bay"><h3>Held back <small>never leaves the box</small></h3><div id="d-held"></div></div>
+        <p class="sidelbl">On the box</p>
+        <div class="bay"><p class="bt">Not backed up</p><div id="d-fresh"></div></div>
+        <div class="bay"><p class="bt">Held back <small>never leaves the box</small></p><div id="d-held"></div></div>
       </div>
       <div class="side">
-        <div class="bay"><h3>Backup pull request <small id="d-checks"></small></h3><div id="d-review"></div></div>
-        <div class="bay"><h3>Landed on main</h3><div id="d-landed"></div></div>
+        <p class="sidelbl">On GitHub</p>
+        <div class="bay"><p class="bt">Backup pull request <small id="d-checks"></small></p><div id="d-review"></div></div>
+        <div class="bay tall"><p class="bt">Landed on main</p><div id="d-landed"></div></div>
       </div>
     </div>
     <div class="caption">
       <div class="steps" role="group" aria-label="Demo steps">
         <button class="key small" id="d-play" aria-label="Pause the demo"><svg class="i"><use href="#i-pause"/></svg></button>
         <button class="key small" data-step="0">1</button><button class="key small" data-step="1">2</button><button class="key small" data-step="2">3</button>
-        <button class="key small" data-step="3">4</button><button class="key small" data-step="4">5</button><button class="key small" data-step="5">6</button>
+        <button class="key small" data-step="3">4</button><button class="key small" data-step="4">5</button><button class="key small" data-step="5">6</button><button class="key small" data-step="6">7</button>
       </div>
       <p id="d-cap" aria-live="polite"></p>
+    </div>
     </div>
   </div>
 
@@ -256,6 +275,7 @@
     <h2>A config that changes by itself deserves a review.</h2>
     <p class="intro">Home Assistant rewrites its own YAML: an automation edited in the UI, an integration updated at midnight, a quick fix you meant to revisit. Most sync tools copy all of that straight onto a branch. This one puts a pull request in between.</p>
     <div class="ledger">
+      <div class="heads"><span>On the box</span><span>On GitHub</span></div>
       <div class="row">
         <div class="cell"><h3>On the box</h3><p><strong>The live config is never rolled back.</strong> A backup does not touch your files, and a pull that conflicts keeps what is running.</p></div>
         <div class="cell"><h3>On GitHub</h3><p><strong>Nothing is pushed to main after the first import.</strong> No force-push, ever. Every later change is a pull request you can read, comment on and refuse.</p></div>
@@ -275,6 +295,7 @@
     <h2>One change, there and back.</h2>
     <p class="intro">The same gate works in both directions. A change made on the box goes out for review; a change written in your editor comes in through the same pull request and the same checks.</p>
     <div class="ledger">
+      <div class="heads"><span>On the box</span><span>On GitHub</span></div>
       <div class="row"><span class="n">1</span>
         <div class="cell"><h3>On the box</h3><p>A file watcher sees the edit. Once nothing has changed for two minutes, the app commits what differs from main.</p></div>
         <div class="cell"><h3>On GitHub</h3><p>The commit lands on <strong>one rolling backup PR</strong>. Later edits are added to it instead of opening a new PR each time.</p></div>
@@ -299,12 +320,12 @@
     <p class="intro">Two filters run before every push, the very first import included. If the second one cannot run, nothing is pushed.</p>
     <div class="ledger">
       <div class="row">
-        <div class="cell"><h3>By name</h3><p><code>secrets.yaml</code> and its copies (<code>.bak</code>, <code>.orig</code>), <code>.storage/</code>, <code>.cloud/</code>, keys, tokens, the Zigbee2MQTT secret and the ESPHome builder key are never committed, even in a repository that arrived with its own <code>.gitignore</code>.</p></div>
-        <div class="cell"><h3>By content</h3><p>Any other file that contains a private key, an API token or a literal <code>password:</code> is <strong>held back</strong>. It stays on the box, the panel lists it, and its content is never shown or sent anywhere.</p></div>
+        <div class="cell"><h3 class="t">By name</h3><p><code>secrets.yaml</code> and its copies (<code>.bak</code>, <code>.orig</code>), <code>.storage/</code>, <code>.cloud/</code>, keys, tokens, the Zigbee2MQTT secret and the ESPHome builder key are never committed, even in a repository that arrived with its own <code>.gitignore</code>.</p></div>
+        <div class="cell"><h3 class="t">By content</h3><p>Any other file that contains a private key, an API token or a literal <code>password:</code> is <strong>held back</strong>. It stays on the box, the panel lists it, and its content is never shown or sent anywhere.</p></div>
       </div>
       <div class="row">
-        <div class="cell"><h3>The token</h3><p>Your GitHub token lives in the app's options, encrypted by the Supervisor. It is never written to <code>.git/config</code>, to a log or to a command line.</p></div>
-        <div class="cell"><h3>The controls</h3><p>The panel is reachable only through Home Assistant's own login. Discard, merge and restart are refused over MQTT, and the webhook only obeys deliveries signed with your secret.</p></div>
+        <div class="cell"><h3 class="t">The token</h3><p>Your GitHub token lives in the app's options, in a masked password field. It is never written to <code>.git/config</code>, to a log or to a command line.</p></div>
+        <div class="cell"><h3 class="t">The controls</h3><p>The panel is reachable only through Home Assistant's own login. Discard, merge and restart are refused over MQTT, and the webhook only obeys deliveries signed with your secret.</p></div>
       </div>
     </div>
   </div></section>
@@ -328,14 +349,11 @@
         <figcaption>On a phone, right after a notification.</figcaption>
       </figure>
     </div>
-    <ul class="points">
-      <li><b>Not backed up, in review, held back, landed</b><span>Each file sits in the bay that says its state, and opens in place into its diff, new files included.</span></li>
-      <li><b>Merge and restart, with a net</b><span>Merge the backup PR when its checks pass. Restart Home Assistant only after a passing config check.</span></li>
-      <li><b>Discard, with a safety copy</b><span>Put the box back to main in one confirmed step. Ignored and held files stay; the last five discards can be restored.</span></li>
-      <li><b>Says what it needs</b><span>A failed run, an invalid config, a required restart or a paused sync appear with the action that resolves them.</span></li>
-      <li><b>Entities and events</b><span>Status, pending files, open PR, checks, held files and restart required as Home Assistant entities, plus <code>ha_gitops_*</code> events for automations.</span></li>
-      <li><b>Revert is a pull request</b><span>Pick a commit in the history; the app opens a PR that undoes it. Nothing changes until you merge.</span></li>
-    </ul>
+    <div class="opened">
+      <div class="strip" data-s="fresh"><span class="f">edit</span><span class="p"><b>automations.yaml</b></span><span class="d"><span class="a">+6</span> −0</span></div>
+      <div class="diff" tabindex="0" role="region" aria-label="The change in automations.yaml"><span class="h">@@ -8,3 +8,9 @@</span><span>       area_id: living_room</span><span class="a">+- alias: Night mode</span><span class="a">+  trigger:</span><span class="a">+    - platform: time</span><span class="a">+      at: "23:00:00"</span><span class="a">+  action:</span><span class="a">+    - service: script.goodnight</span></div>
+      <p class="note">Every strip opens in place into its diff, new files included. The same state is published as Home Assistant entities and <code>ha_gitops_*</code> events, and Discard puts the box back to main while keeping a safety copy of what it dropped.</p>
+    </div>
   </div></section>
 
   <section id="configure"><div class="wrap">
@@ -427,20 +445,25 @@ webhook_secret: a-long-random-string</pre>
     {box: "4c5a275", hub: "4c5a275", field: ["drift", "box has changes"], fresh: auto("fresh", "edit"), heldOn: true,
       review: empty("No pull request open."), checks: "", landed: "",
       cap: ["You edit an automation in the Home Assistant UI.", "The app sees it. A second file contains a password: it is held back."]},
-    {box: "4c5a275", hub: "4c5a275", field: ["drift", "box has changes"], fresh: empty("Backed up."), heldOn: true,
+    {box: "4c5a275", hub: "4c5a275", field: ["drift", "box has changes"], fresh: empty("Now in the pull request."), heldOn: true,
       review: auto("review", "edit"), checks: "#12 · checks running", landed: "",
       cap: ["Two minutes later, it is a pull request.", "The edit crosses to GitHub. The held file stays where it is."]},
-    {box: "4c5a275", hub: "4c5a275", field: ["drift", "box has changes"], fresh: empty("Backed up."), heldOn: true,
+    {box: "4c5a275", hub: "4c5a275", field: ["drift", "box has changes"], fresh: empty("Now in the pull request."), heldOn: true,
       review: auto("review", "edit"), checks: "#12 · checks passed", landed: "",
       cap: ["CI boots a real Home Assistant with it.", "The config is valid and the instance starts. The merge is yours to make."]},
-    {box: "4c5a275", hub: "9e1f3b2", field: ["ahead", "GitHub is ahead"], fresh: empty("Backed up."), heldOn: true,
+    {box: "4c5a275", hub: "9e1f3b2", field: ["ahead", "GitHub is ahead"], fresh: empty("Nothing waiting."), heldOn: true,
       review: empty("Merged."), checks: "#12 · merged", landed: auto("landed", "9e1f3b2"),
       cap: ["You merge.", "Main now holds the change, under a new commit."]},
     {box: "9e1f3b2", hub: "9e1f3b2", field: ["drift", "box has changes"], fresh: empty("Nothing waiting."), heldOn: true,
       review: empty("No pull request open."), checks: "", landed: auto("landed", "9e1f3b2"),
       cap: ["The box pulls it and reloads automations.", "Same commit again. Only the held file still differs, and it stays home."]},
+    {box: "9e1f3b2", hub: "9e1f3b2", field: ["equal", "in agreement"], fresh: empty("Nothing waiting."), heldOn: false,
+      review: empty("No pull request open."), checks: "", landed: auto("landed", "9e1f3b2"),
+      cap: ["Move the password to secrets.yaml, and both sides agree.", "The file now only holds a !secret reference, so it can be backed up like any other."]},
   ];
-  let step = 1, playing = !reduced, timer = null;
+  let step = 1, playing = !reduced, timer = null, visible = true;
+  if ("IntersectionObserver" in window)   // no redraws while the demo is off-screen
+    new IntersectionObserver((e) => { visible = e[0].isIntersecting; }).observe($("#demo"));
 
   function draw() {
     const s = STEPS[step];
@@ -463,7 +486,7 @@ webhook_secret: a-long-random-string</pre>
   }
   function schedule() {
     clearInterval(timer);
-    if (playing) timer = setInterval(() => { if (!document.hidden) show(step + 1); }, 3400);
+    if (playing) timer = setInterval(() => { if (!document.hidden && visible) show(step + 1); }, 3400);
     const b = $("#d-play");
     b.innerHTML = `<svg class="i"><use href="#i-${playing ? "pause" : "play"}"/></svg>`;
     b.setAttribute("aria-label", playing ? "Pause the demo" : "Play the demo");
