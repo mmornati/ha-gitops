@@ -69,6 +69,7 @@ class ControllerTest(unittest.IsolatedAsyncioTestCase):
 
     def panel_app(self):
         app = web.Application(middlewares=[self.ctl.ingress_only])
+        app.router.add_get("/", self.ctl.panel_index)
         app.router.add_get("/api/state", self.ctl.api_state)
         app.router.add_get("/api/history", self.ctl.api_history)
         app.router.add_get("/api/diff", self.ctl.api_diff)
@@ -177,6 +178,18 @@ class ControllerTest(unittest.IsolatedAsyncioTestCase):
         out = subprocess.run(["git", "diff", "--cached", "--name-only"], cwd=self.config,
                              env=self.env, capture_output=True, text=True).stdout
         self.assertEqual(out, "")
+
+    async def test_panel_is_never_served_from_a_stale_cache(self):
+        async with TestClient(TestServer(self.panel_app())) as client:
+            page = await client.get("/")
+            self.assertEqual(page.status, 200)
+            self.assertEqual(page.headers["Cache-Control"], "no-cache")
+            self.assertIn("ETag", page.headers)  # so a revalidation is cheap
+            again = await client.get("/", headers={"If-None-Match": page.headers["ETag"]})
+            self.assertEqual(again.status, 304)
+            self.assertEqual(again.headers["Cache-Control"], "no-cache")
+            state = await client.get("/api/state")
+            self.assertEqual(state.headers["Cache-Control"], "no-store")
 
     async def test_panel_only_commands_are_refused_over_mqtt(self):
         for cmd in ("discard", "merge", "restart"):

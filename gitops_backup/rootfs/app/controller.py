@@ -726,7 +726,14 @@ class Controller:
             return web.Response(status=403, text="ingress only")
         if request.method == "POST" and request.headers.get("X-Requested-With") != "ha-gitops":
             return web.Response(status=403, text="missing header")
-        return await handler(request)
+        response = await handler(request)
+        # Without this the browser keeps a copy of the panel for days (it
+        # guesses from the file's age) and, after an update, runs the old page
+        # against the new API. The page is revalidated on every load; API
+        # answers are never stored.
+        response.headers["Cache-Control"] = (
+            "no-store" if request.path.startswith("/api/") else "no-cache")
+        return response
 
     async def panel_index(self, _request):
         return web.FileResponse(PANEL)

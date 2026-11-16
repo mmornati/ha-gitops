@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.1
+
+- Fix: after updating to 0.5.0 the browser could keep showing the old panel
+  with "Could not reach the app". The panel page was served without cache
+  instructions, so a browser kept its old copy for days and ran it against
+  the new API. The page is now revalidated on every load and API answers are
+  never stored. **After this update, reload the panel once without the cache**
+  (Ctrl+Shift+R, or Cmd+Shift+R on a Mac; in the Home Assistant mobile app:
+  Settings → Companion app → Debugging → Reset frontend cache). Later
+  updates need nothing.
+
 ## 0.5.0
 
 Flow fixes
