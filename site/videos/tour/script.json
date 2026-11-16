@@ -1,0 +1,26 @@
+{
+  "langs": ["en", "fr"],
+  "scenes": [
+    {"id": "drift", "min": 8, "lead": 0.7, "chapter": {"en": "The drift", "fr": "La dérive"},
+     "en": ["Your Home Assistant configuration never stops changing.", "An automation edited in the interface.", "An integration updated overnight.", "A quick fix you meant to look at again."],
+     "fr": ["Votre configuration Home Assistant change sans arrêt.", "Une automatisation modifiée dans l'interface.", "Une intégration mise à jour pendant la nuit.", "Un correctif rapide, à revoir plus tard."]},
+    {"id": "idea", "min": 7, "chapter": {"en": "The idea", "fr": "L'idée"},
+     "en": ["HA GitOps puts a pull request between your box and your main branch.", "After the first import, nothing is ever pushed to main."],
+     "fr": ["GitOps pour Home Assistant place une pull request entre votre box et votre branche principale.", "Après le premier import, rien n'est jamais poussé directement sur la branche principale."]},
+    {"id": "out", "min": 7, "chapter": {"en": "Out for review", "fr": "En relecture"},
+     "en": ["Two minutes after an edit, the change crosses over to GitHub.", "One backup pull request, updated as you keep working."],
+     "fr": ["Deux minutes après une modification, le changement passe côté GitHub.", "Une seule pull request de sauvegarde, mise à jour au fil de vos modifications."]},
+    {"id": "checked", "min": 6.5, "chapter": {"en": "Checked", "fr": "Vérifié"},
+     "en": ["Before you merge, a workflow validates the configuration.", "Then it boots a real Home Assistant with it."],
+     "fr": ["Avant la fusion, un workflow valide la configuration.", "Puis il démarre un vrai Home Assistant avec."]},
+    {"id": "back", "min": 9, "chapter": {"en": "Back home", "fr": "Retour à la maison"},
+     "en": ["You merge.", "The box pulls the change within seconds, runs its own check, and reloads only what changed.", "A restart is asked for, never forced."],
+     "fr": ["Vous fusionnez.", "La box récupère le changement en quelques secondes, lance sa propre vérification, et ne recharge que ce qui a changé.", "Un redémarrage est proposé, jamais imposé."]},
+    {"id": "secrets", "min": 7, "chapter": {"en": "Secrets stay home", "fr": "Les secrets restent à la maison"},
+     "en": ["And a file with a password inside?", "It is held back.", "Secrets, keys and tokens never leave the box."],
+     "fr": ["Et un fichier qui contient un mot de passe ?", "Il est retenu.", "Secrets, clés et jetons ne quittent jamais la box."]},
+    {"id": "install", "min": 8, "tail": 2.2, "chapter": {"en": "One click", "fr": "En un clic"},
+     "en": ["Everything shows up in one panel, inside Home Assistant.", "Add the repository in one click, and let your configuration go through review."],
+     "fr": ["Tout apparaît dans un seul panneau, dans Home Assistant.", "Ajoutez le dépôt en un clic, et faites passer votre configuration en revue."]}
+  ]
+}

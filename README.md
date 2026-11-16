@@ -4,6 +4,8 @@
 every change is a reviewable pull request, and CI validates your config against
 pinned Home Assistant versions *before* it can merge.
 
+**[Project page](https://mmornati.github.io/ha-gitops/)** · **[One-minute video](https://mmornati.github.io/ha-gitops/videos/tour/)** ([en français](https://mmornati.github.io/ha-gitops/videos/tour/?lang=fr))
+
 [![Add repository to my Home Assistant](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmmornati%2Fha-gitops)
 
 [![GitHub Release](https://img.shields.io/github/v/release/mmornati/ha-gitops?label=release)](https://github.com/mmornati/ha-gitops/releases/latest)
