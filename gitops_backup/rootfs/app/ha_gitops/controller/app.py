@@ -8,14 +8,14 @@ Decides when the engine runs, and lets Home Assistant see and drive it:
 * state: MQTT discovery entities (or one REST sensor without MQTT)
 
 The engine does all git work and holds its own lock; the controller only
-queues runs, one at a time.
+queues runs, one at a time. This module is the controller's state and its
+decisions; ``service`` wires it to the triggers and the HTTP servers.
 """
 
 import asyncio
 import contextlib
 import logging
 import sys
-import threading
 import time
 from typing import Any
 
@@ -23,7 +23,6 @@ from ha_gitops.adapters.git import git_env
 from ha_gitops.adapters.github import GitHub
 from ha_gitops.adapters.hass import HassError, HomeAssistant
 from ha_gitops.adapters.state import StateStore
-from ha_gitops.controller import triggers, web
 from ha_gitops.controller.drift import DriftService
 from ha_gitops.controller.engine_runner import EngineRunner
 from ha_gitops.controller.gitio import AsyncGit
@@ -314,31 +313,3 @@ class Controller:
                 )
             except HassError as err:
                 log.debug("REST state publish failed: %s", err)
-
-    # ---- main --------------------------------------------------------------
-
-    async def run(self) -> None:
-        settings = self.settings
-        log.info(
-            "HA GitOps controller %s starting (sync_mode=%s, poll=%ss, every %sh)",
-            settings.version,
-            settings.sync_mode,
-            settings.poll_seconds,
-            settings.interval_hours,
-        )
-        if settings.mqtt_discovery:
-            await self.mqtt.connect()
-        runners = await web.start(self)
-        await self.pulls.refresh()
-        await self.publish()
-        threading.Thread(target=self.stdin_reader, daemon=True).start()
-        try:
-            async with asyncio.TaskGroup() as group:
-                group.create_task(self.worker())
-                group.create_task(triggers.scheduler(self))
-                group.create_task(triggers.poller(self))
-                group.create_task(triggers.watcher(self))
-        finally:
-            self.mqtt.close()
-            for runner in runners:
-                await runner.cleanup()

@@ -5,13 +5,10 @@ import asyncio
 import logging
 import shutil
 import time
-from typing import TYPE_CHECKING
 
+from ha_gitops.controller.app import Controller
 from ha_gitops.rules.ignore import INOTIFY_EXCLUDE, watcher_ignores
 from ha_gitops.rules.timing import Debounce
-
-if TYPE_CHECKING:
-    from ha_gitops.controller.app import Controller
 
 log = logging.getLogger("ha_gitops")
 PR_REFRESH_SECONDS = 300

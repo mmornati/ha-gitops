@@ -16,7 +16,7 @@ import pytest
 from aiohttp.test_utils import TestClient, TestServer
 from ha_gitops.adapters.github import PullRequest
 from ha_gitops.controller import __main__ as entry
-from ha_gitops.controller import mqtt, triggers, web
+from ha_gitops.controller import mqtt, service, triggers, web
 from ha_gitops.controller.app import Controller
 from ha_gitops.controller.jobs import Job, JobQueue
 from ha_gitops.rules.timing import Debounce
@@ -394,7 +394,7 @@ async def test_cancelled_run_stops_the_engine(ctl: Controller) -> None:
     assert ctl.running
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await task
+        await asyncio.wait_for(task, 10)
     assert not ctl.running
 
 
@@ -642,7 +642,7 @@ async def test_service_starts_serves_and_stops(
     monkeypatch.setattr("sys.stdin", io.StringIO("pause\n"))
     monkeypatch.setattr(triggers.shutil, "which", lambda _name: None)
     object.__setattr__(ctl.settings, "mqtt_discovery", True)
-    task = asyncio.create_task(ctl.run())
+    task = asyncio.create_task(service.run(ctl))
     for _ in range(100):
         await asyncio.sleep(0.02)
         if ctl.paused:
@@ -650,7 +650,7 @@ async def test_service_starts_serves_and_stops(
     assert ctl.paused  # the command typed on stdin arrived
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await task
+        await asyncio.wait_for(task, 10)
 
     object.__setattr__(ctl.settings, "webhook_secret", "")
     runners = await web.start(ctl)
@@ -665,12 +665,13 @@ async def test_entry_point_stops_cleanly_on_a_signal(
         monkeypatch.setenv(key, value)
     started = asyncio.Event()
 
-    async def forever(self: Controller) -> None:
+    async def forever(_ctl: Controller) -> None:
         started.set()
         await asyncio.sleep(60)
 
-    monkeypatch.setattr(Controller, "run", forever)
+    monkeypatch.setattr(service, "run", forever)
     task = asyncio.create_task(entry.serve())
     await asyncio.wait_for(started.wait(), 5)
     task.cancel()
-    await task  # a cancelled service is a clean exit, not a traceback
+    # A cancelled service is a clean exit, not a traceback
+    assert await asyncio.wait_for(task, 10) is None

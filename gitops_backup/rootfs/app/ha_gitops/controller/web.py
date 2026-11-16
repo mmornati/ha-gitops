@@ -11,15 +11,12 @@ import logging
 import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from aiohttp import web
 
+from ha_gitops.controller.app import Controller
 from ha_gitops.rules.text import log_safe
 from ha_gitops.rules.webhook import verify_signature, webhook_action
-
-if TYPE_CHECKING:
-    from ha_gitops.controller.app import Controller
 
 log = logging.getLogger("ha_gitops")
 PANEL = Path(__file__).resolve().parent.parent.parent / "panel" / "index.html"

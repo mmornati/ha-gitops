@@ -113,7 +113,7 @@ jobs:
           docker run --rm --entrypoint sh gitops-backup:test \
             -c "command -v git && command -v inotifywait && ! command -v pip \
               && cd /app && python3 -c 'import aiohttp, paho.mqtt.client; \
-                import ha_gitops.engine.runner, ha_gitops.controller.app; \
+                import ha_gitops.engine.runner, ha_gitops.controller.service; \
                 print(aiohttp.__version__, paho.mqtt.__version__)'"
       - name: Tests inside the image (Alpine git, musl, the shipped Python)
         run: |

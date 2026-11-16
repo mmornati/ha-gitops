@@ -7,6 +7,7 @@ import logging
 import signal
 import sys
 
+from ha_gitops.controller import service
 from ha_gitops.controller.app import Controller
 from ha_gitops.settings import Settings
 
@@ -25,7 +26,7 @@ async def serve() -> None:
         for sig in (signal.SIGTERM, signal.SIGINT):
             loop.add_signal_handler(sig, task.cancel)
     with contextlib.suppress(asyncio.CancelledError):
-        await Controller(Settings.load()).run()
+        await service.run(Controller(Settings.load()))
 
 
 def main() -> None:
