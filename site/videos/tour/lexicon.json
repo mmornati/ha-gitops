@@ -1,0 +1,9 @@
+{
+  "_doc": "Pronunciation fixes, applied to the spoken text only (subtitles keep the original). Keys are whole words, case-sensitive. A [[…]] value is raw IPA (Kokoro, Azure). French: the voice read GitHub as 'ji-hub', Home as 'homme' and spelled GitOps letter by letter. 'HA GitOps' could not be made clear in French with this voice, so the French script says 'GitOps pour Home Assistant'.",
+  "en": {},
+  "fr": {
+    "GitHub": "Guite Hub",
+    "Home": "Hôme",
+    "GitOps": "[[ɡit ɔps]]"
+  }
+}

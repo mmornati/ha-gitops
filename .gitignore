@@ -6,3 +6,5 @@ __pycache__/
 .impeccable/mocks/
 .impeccable/questions/
 .impeccable/build/
+build/
+.impeccable/hook.cache.json
