@@ -12,3 +12,14 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+  # Runtime and dev Python packages (pyproject.toml + uv.lock). After a bump,
+  # regenerate gitops_backup/requirements.txt as its header says; CI checks it.
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      python:
+        patterns: ["*"]

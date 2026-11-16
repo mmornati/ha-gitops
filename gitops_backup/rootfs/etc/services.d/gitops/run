@@ -3,10 +3,12 @@
 # SPDX-FileCopyrightText: 2026 Anil Belur
 # ==============================================================================
 # HA GitOps — controller (schedule, poll, webhook, file watcher, MQTT, panel).
-# The git work itself is done by /app/gitops_backup.sh, run by the controller.
+# The git work itself is done by the engine (python3 -m ha_gitops.engine), which
+# the controller runs as a child process, one run at a time.
 # ==============================================================================
 
 bashio::log.info "HA GitOps starting"
 export BUILD_VERSION
 BUILD_VERSION="$(bashio::addon.version 2>/dev/null || echo dev)"
-exec python3 -u /app/controller.py
+cd /app || exit 1
+exec python3 -u -m ha_gitops.controller

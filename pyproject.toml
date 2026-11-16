@@ -1,0 +1,73 @@
+# SPDX-License-Identifier: Apache-2.0
+[project]
+name = "ha-gitops"
+version = "0.6.0"
+description = "PR-gated GitHub sync for a Home Assistant config (HA app)"
+license = "Apache-2.0"
+# The app image is Alpine 3.24 (Python 3.14), the same Python as Home Assistant 2026.11.
+requires-python = ">=3.14"
+# Runtime pins follow Home Assistant core (requirements.txt / requirements_all.txt).
+# gitops_backup/requirements.txt is the hash-locked export of these, see its header.
+dependencies = [
+    "aiohttp==3.14.5",
+    "paho-mqtt==2.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.2.0",
+    "pytest-asyncio==1.5.0",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.5",
+    "mypy==2.4.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "gitops_backup/rootfs/app"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-q --strict-markers --cov --cov-report=term-missing:skip-covered"
+
+[tool.coverage.run]
+source = ["ha_gitops"]
+branch = true
+# The engine runs as a child process in a few controller tests.
+parallel = true
+patch = ["subprocess"]
+
+[tool.coverage.report]
+fail_under = 95
+show_missing = true
+exclude_also = [
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+include = ["gitops_backup/rootfs/app/**/*.py", "tests/**/*.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "N", "W", "C4", "SIM", "RUF", "ASYNC", "PT", "PTH", "RET"]
+ignore = [
+    "S603",  # subprocess with a fixed argv (git) is the whole point
+    "S607",  # git and inotifywait are found on PATH, as in the image
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S105", "S106", "S108", "ASYNC"]
+# Carried over from before the rework, still in unittest style
+"tests/test_rules.py" = ["S101", "S105", "S106", "PT009", "PT027"]
+"tests/test_secret_rules.py" = ["S101", "S105", "S106", "PT009", "PT027"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+mypy_path = "gitops_backup/rootfs/app"
+packages = ["ha_gitops"]

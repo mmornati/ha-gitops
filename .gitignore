@@ -8,3 +8,11 @@ __pycache__/
 .impeccable/build/
 build/
 .impeccable/hook.cache.json
+.venv/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.6.0
+
+One code base. The git engine was a 1,000-line shell script run by a Python
+service; it is now Python too, in the same package, with the same behaviour.
+Options, the panel, the MQTT entities and the files in the app's data folder
+are unchanged, so there is nothing to do when updating.
+
+- Change: the engine is the `ha_gitops` Python package. It still runs as its
+  own process, one run at a time, and can still be stopped when it hangs.
+- Change: the image no longer needs `jq` or `curl`. `aiohttp` (3.14.5) and
+  `paho-mqtt` (2.1.0) are the versions Home Assistant itself uses, installed
+  from wheels checked against recorded hashes.
+- Fix: a git command that fails in the middle of a run (a rejected push, for
+  example) is now reported as `error:git`, with the command in the log. It
+  used to end the run without updating the status, which kept showing the
+  result of the run before.
+- Fix: a config repository without an `origin` remote gets it back instead of
+  failing every run.
+- Fix: two backups started within the same second no longer fail on the
+  branch name.
+- Security: the GitHub token is not sent on if the API answers with a
+  redirect, and proxies from the environment are ignored. Branch names that
+  come back from GitHub are checked before they are given to git.
+- Security: the panel API refuses request bodies over 64 kB and answers with
+  `X-Content-Type-Options: nosniff`.
+- Faster: no more `jq`, `curl` and scanner processes per run; paths are
+  handed to git in one call instead of one call per file, also when a stash
+  with thousands of files has to be settled.
+- The service stops cleanly on shutdown and stops a run in progress with it.
+- Tests: the shell self-check is replaced by 155 pytest cases against real
+  git repositories (97 % coverage, the build fails under 95 %), with ruff and
+  mypy in strict mode.
+
 ## 0.5.2
 
 - Panel: the colours now follow Home Assistant. White or black canvas, cards,

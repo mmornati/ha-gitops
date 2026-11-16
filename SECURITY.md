@@ -17,8 +17,12 @@ upstream are best reported to <https://github.com/askb/ha-gitops> as well.
 ## What the app protects
 
 - The GitHub token is read from the app's options (a masked password field) and handed to
-  git through an askpass helper and to `curl` through a header on a pipe.
-  It is never written to `.git/config`, the log or a command line.
+  git through an askpass helper and to GitHub in an `Authorization` header.
+  It is never written to `.git/config`, the log, a URL or a command line,
+  and it is not sent on if GitHub or Home Assistant answers with a redirect.
+- The Python libraries in the image are pinned to the versions Home
+  Assistant uses and installed against recorded hashes
+  (`gitops_backup/requirements.txt`).
 - `secrets.yaml` (and copies), `.storage/`, `.cloud/`, keys, tokens and
   the ESPHome Device Builder state are excluded through
   `.git/info/exclude` on every run and untracked if already committed.
