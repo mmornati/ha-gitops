@@ -52,9 +52,10 @@ tracking with review, not a disaster-recovery backup.
 ## Brand Commitments
 
 - Name: HA GitOps. This is a fork (mmornati/ha-gitops) of askb/ha-gitops.
-- The panel has its own identity rather than imitating Home Assistant cards,
-  while staying calm enough to live inside the Home Assistant frame
-  (confirmed by the owner, 2026-11-15).
+- The panel follows the Home Assistant theme in use (light, dark or custom): its
+  canvas, cards, text and state colours come from Home Assistant, so it reads as
+  part of it (owner, 2026-11-16; this replaces the earlier "own identity" choice).
+  Its layout and components stay its own.
 - No logo or brand assets exist.
 
 ## Evidence on Hand

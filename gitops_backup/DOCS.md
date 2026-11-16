@@ -253,6 +253,7 @@ and sorts every changed file into a bay:
 - **Landed**: the history of the base branch. *Revert…* opens a PR that
   reverts a commit: nothing changes on the box until you merge it.
 
+The panel wears the Home Assistant theme in use (light, dark or custom).
 Each file opens in place into its diff, new files included. When merged
 changes need a restart, the panel offers **Restart Home Assistant**, which
 runs the config check first and refuses on an invalid configuration.

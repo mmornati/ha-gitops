@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.2
+
+- Panel: the colours now follow Home Assistant. White or black canvas, cards,
+  text and the warning, info, error and success colours come from the theme in
+  use, light, dark or custom, and change with it; the grey-green look is gone.
+  It follows the theme chosen in your Home Assistant profile, not the one of
+  the operating system. Layout and behaviour are unchanged.
+
 ## 0.5.1
 
 - Fix: after updating to 0.5.0 the browser could keep showing the old panel
