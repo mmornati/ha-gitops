@@ -277,13 +277,13 @@ class Controller:
     async def command(self, raw, source: str) -> str:
         parsed = core.parse_command(raw)
         if parsed is None:
-            log.warning("Ignored unknown command from %s: %r", source, raw)
+            log.warning("Ignored unknown command from %s: %s", source, core.log_safe(repr(raw)))
             return "unknown command"
         cmd, arg = parsed
         if cmd in core.PANEL_ONLY and source == "mqtt":
-            log.warning("Refused %s over MQTT: only the panel can do that", cmd)
+            log.warning("Refused %s over MQTT: only the panel can do that", core.log_safe(cmd))
             return "not allowed over MQTT"
-        log.info("Command from %s: %s %s", source, cmd, arg)
+        log.info("Command from %s: %s %s", source, core.log_safe(cmd), core.log_safe(arg))
         result = "ok"
         if cmd == "sync":
             self.request("sync", source)
@@ -700,13 +700,13 @@ class Controller:
                                      request.headers.get("X-Hub-Signature-256")):
             # Valid deliveries are never limited; bad ones stop being logged
             # after 10 a minute per address, so they cannot flood the log.
-            count = self.hook_limiter.hit(request.remote or "?", time.monotonic())
+            peer = core.log_safe(request.remote or "?")
+            count = self.hook_limiter.hit(peer, time.monotonic())
             if count <= self.hook_limiter.limit:
-                log.warning("Webhook with a bad signature from %s", request.remote)
+                log.warning("Webhook with a bad signature from %s", peer)
                 return web.Response(status=401, text="bad signature")
             if count == self.hook_limiter.limit + 1:
-                log.warning("More bad webhook signatures from %s; not logging them for a minute",
-                            request.remote)
+                log.warning("More bad webhook signatures from %s; not logging them for a minute", peer)
             return web.Response(status=429, text="too many bad signatures")
         try:
             payload = json.loads(body or b"{}")

@@ -136,6 +136,17 @@ class HardeningTest(unittest.TestCase):
             self.assertIn(cmd, core.PANEL_ONLY)
         self.assertNotIn("sync", core.PANEL_ONLY)
 
+    def test_log_safe_cannot_forge_a_log_line(self):
+        self.assertEqual(core.log_safe("sync\n2026-01-01 - Status: success"), "sync 2026-01-01 - Status: success")
+        self.assertEqual(core.log_safe("a\rb\x1b[31mc"), "a b?[31mc")
+        self.assertEqual(len(core.log_safe("x" * 500)), 200)
+        self.assertEqual(core.log_safe(None), "None")
+
+    def test_only_revert_keeps_its_argument(self):
+        self.assertEqual(core.parse_command("sync extra\nforged line"), ("sync", ""))
+        self.assertEqual(core.parse_command({"command": "backup", "arg": "x"}), ("backup", ""))
+        self.assertEqual(core.parse_command("revert ABC1234"), ("revert", "abc1234"))
+
     def test_backoff_doubles_up_to_an_hour(self):
         self.assertEqual(core.backoff_seconds(0), 0)
         self.assertEqual([core.backoff_seconds(n) for n in (1, 2, 3)], [60, 120, 240])

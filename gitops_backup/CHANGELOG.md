@@ -49,6 +49,9 @@ Security
   backup PR is taken out of it by the next backup: the scan now covers
   everything that differs from the base branch. It stays in that branch's
   history, so rotate the secret.
+- Values that come from outside (a command, its argument, a caller's
+  address) are stripped of line breaks before they are logged, and only
+  `revert` keeps its argument.
 - A file renamed and edited in the same change is scanned too (git reported
   it as a rename, which the scan skipped).
 
