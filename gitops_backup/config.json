@@ -1,6 +1,6 @@
 {
   "name": "HA GitOps (fork)",
-  "version": "0.4.4",
+  "version": "0.5.0",
   "slug": "gitops_backup",
   "description": "PR-gated GitHub sync for your Home Assistant config: real-time backup PRs, merged changes applied live, CI validates before merge",
   "url": "https://github.com/mmornati/ha-gitops",
@@ -36,14 +36,17 @@
     "run_at_start": false,
     "dry_run": false,
     "commit_name": "HA GitOps Backup",
-    "commit_email": "gitops-backup@localhost",
+    "commit_email": "gitops-backup@users.noreply.github.com",
     "signoff": true,
     "apply_after_pull": "auto",
     "auto_restart": false,
+    "on_invalid_config": "notify",
+    "merge_method": "merge",
     "sync_mode": "both",
     "poll_seconds": 60,
     "debounce_seconds": 120,
-    "mqtt_discovery": true
+    "mqtt_discovery": true,
+    "mqtt_commands": true
   },
   "schema": {
     "github_repo": "match(^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$)",
@@ -58,10 +61,13 @@
     "signoff": "bool",
     "apply_after_pull": "list(auto|reload|restart|off)",
     "auto_restart": "bool",
+    "on_invalid_config": "list(notify|revert_pr)?",
+    "merge_method": "list(merge|squash|rebase)?",
     "sync_mode": "list(both|pull|push|schedule)",
     "poll_seconds": "int(0,86400)",
     "debounce_seconds": "int(10,3600)",
     "webhook_secret": "password?",
-    "mqtt_discovery": "bool"
+    "mqtt_discovery": "bool",
+    "mqtt_commands": "bool?"
   }
 }

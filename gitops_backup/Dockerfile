@@ -3,7 +3,7 @@
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
-RUN apk add --no-cache git curl jq bash inotify-tools \
+RUN apk upgrade --no-cache && apk add --no-cache git curl jq bash inotify-tools \
     python3 py3-aiohttp py3-paho-mqtt
 
 COPY rootfs /

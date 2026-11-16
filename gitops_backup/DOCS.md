@@ -144,7 +144,19 @@ trigger anything.
 **One rolling PR.** New drift is added as a commit to the open backup PR
 (a normal fast-forward push, never a force-push) and the PR description is
 refreshed with the changed files grouped by kind. Merge it when you are
-happy; the next change opens a new PR. Close it to drop the changes.
+happy; the next change opens a new PR. If `main` moves on while the PR is
+open, the next backup is a merge commit, so the PR keeps showing only your
+drift.
+
+Closing the PR does not undo anything on the box: the changes are still
+there, and the next backup opens a new PR with them. To drop them, use
+**Discard…** in the panel (see Control from Home Assistant).
+
+**When runs fail.** After a failed pull or backup the poller backs off (1
+minute, then 2, 4… up to an hour) instead of retrying every interval. A run
+that hangs is stopped after 30 minutes (`error:timeout`), and a stalled
+git transfer fails after a minute under 1 kB/s. An edit made while a run is
+in progress is picked up by a follow-up backup.
 
 `sync_mode` chooses the triggers: `both` (default), `pull` (merged PRs
 only), `push` (local edits only) or `schedule` (only `interval_hours`, the
@@ -154,7 +166,15 @@ pre-0.4.0 behaviour).
 
 When a sync pulls new commits, the app first runs the Home Assistant config
 check. If it fails, nothing is applied: you get a persistent notification
-with the errors and an `ha_gitops_error` event.
+with the errors and an `ha_gitops_error` event, once per pulled commit. The
+files stay on disk, so **do not restart Home Assistant** until the config is
+fixed. Every later run checks again and applies as soon as the check passes.
+With `on_invalid_config: revert_pr` the app also opens a pull request that
+reverts the pulled commits, ready for you to merge.
+
+What is applied is everything since the last commit that was applied, not
+only what the current run pulled. Changes pulled by a dry run, or while the
+config check was failing, are applied by the next run that can.
 
 With `apply_after_pull: auto` (default) it then runs only what the changed
 files need:
@@ -166,7 +186,12 @@ files need:
 | `scenes.yaml`, `scenes/` | `scene.reload` |
 | `templates/`, `groups.yaml`, `customize.yaml`, `themes/`, `python_scripts/` | the matching reload |
 | `configuration.yaml`, `packages/`, `custom_components/`, other YAML | restart required |
-| docs, `www/`, dashboards, `.github/` | nothing |
+| `dashboards/*.yaml`, `ui-lovelace*.yaml` | open browser tabs are told to reload the dashboard |
+| docs, `www/`, `esphome/`, `zigbee2mqtt/`, `.github/` | nothing |
+
+Home Assistant re-reads a YAML dashboard only when a browser asks for it, so
+without that refresh an open tab keeps the old cards. Dashboards edited in
+the UI live in `.storage/` and are out of scope.
 
 A restart is never done behind your back: you get a "restart required"
 notification and an `ha_gitops_restart_required` event (use it for an
@@ -181,6 +206,8 @@ broker the MQTT integration uses) the app creates an **HA GitOps** device:
 |---|---|
 | Status | `success` / `warning` / `error` / `running`, all details as attributes |
 | Pending changes | files changed on the box and not yet in git |
+| Held back files | files kept out of the backup because they look like a secret |
+| Restart required | on when merged changes need a Home Assistant restart |
 | Open PR | PR number (URL and checks as attributes) |
 | PR checks | `success` / `pending` / `failure` / `none` |
 | Last run, Last apply, Local / Remote commit | diagnostics |
@@ -191,8 +218,14 @@ broker the MQTT integration uses) the app creates an **HA GitOps** device:
 Without MQTT the app publishes a single `sensor.ha_gitops_status` with the
 same data as attributes (it reappears on the next run after an HA restart).
 
+Any device with a login on your MQTT broker can press those buttons. Set
+`mqtt_commands: false` to keep the sensors and remove the buttons, switches
+and update entity. Retained command messages are ignored, and `discard`,
+`merge` and `restart` are never accepted over MQTT.
+
 **Commands.** `hassio.addon_stdin` accepts `sync`, `backup`, `dry_run`,
-`pause`, `resume`, `auto_apply_on`, `auto_apply_off` and `revert <sha>`:
+`pause`, `resume`, `auto_apply_on`, `auto_apply_off`, `revert <sha>`,
+`discard`, `merge` and `restart`:
 
 ```yaml
 action: hassio.addon_stdin
@@ -202,13 +235,34 @@ data:
 ```
 
 **Events.** `ha_gitops_pulled`, `ha_gitops_applied`,
-`ha_gitops_restart_required`, `ha_gitops_pr_opened`, `ha_gitops_pr_updated`
-and `ha_gitops_error`, with details in the event data.
+`ha_gitops_restart_required`, `ha_gitops_pr_opened`, `ha_gitops_pr_updated`,
+`ha_gitops_secrets_held`, `ha_gitops_discarded` and `ha_gitops_error`, with
+details in the event data.
 
-**Panel.** The **GitOps** sidebar entry shows the status, the open PR and its
-checks, the pending files with their diff, the history of the base branch,
-and the log, with the same buttons. **Revert…** on a commit opens a PR that
-reverts it: nothing changes on the box until you merge it.
+**Panel.** The **GitOps** sidebar entry shows where the box and GitHub stand
+and sorts every changed file into a bay:
+
+- **Not backed up**: on the box, not on GitHub yet. *Back up now* pushes
+  them; *Discard…* drops them.
+- **In review**: already in the open backup PR, with its checks. *Merge*
+  merges the PR on GitHub (when its checks pass, or when the repository has
+  none) and pulls it straight back; `merge_method` picks merge, squash or
+  rebase.
+- **Held back**: files that look like they contain a secret. Their content
+  is never shown in the panel.
+- **Landed**: the history of the base branch. *Revert…* opens a PR that
+  reverts a commit: nothing changes on the box until you merge it.
+
+Each file opens in place into its diff, new files included. When merged
+changes need a restart, the panel offers **Restart Home Assistant**, which
+runs the config check first and refuses on an invalid configuration.
+
+**Discard…** puts `/config` back to the base branch: local edits are
+reverted, new files removed, deleted files restored, and the open backup PR
+is closed. Files git ignores (`secrets.yaml`, `.storage/`…) and held-back
+files are left alone. A safety copy stays on the box: the last five are kept
+under `refs/gitops/discarded/`, and `git stash apply <ref>` in `/config`
+brings one back.
 
 ## Options
 
@@ -225,11 +279,14 @@ reverts it: nothing changes on the box until you merge it.
 | `signoff` | `true` | Add `Signed-off-by` (DCO) to commits |
 | `apply_after_pull` | `auto` | `auto` (targeted reloads, restart on request), `reload` (`homeassistant.reload_all`), `restart`, or `off`. Always after a passing config check, never in `dry_run` |
 | `auto_restart` | `false` | In `auto` mode, restart HA by itself when merged changes need it |
+| `on_invalid_config` | `notify` | `notify`, or `revert_pr` to also open a PR that reverts pulled changes failing the config check |
+| `merge_method` | `merge` | How the panel's Merge button merges the backup PR: `merge`, `squash` or `rebase` |
 | `sync_mode` | `both` | `both`, `pull`, `push` or `schedule` (see Real-time sync) |
 | `poll_seconds` | `60` | Remote poll interval; `0` = off |
 | `debounce_seconds` | `120` | Quiet time after local edits before committing |
 | `webhook_secret` | — | Turns on the GitHub webhook on port 8098 |
 | `mqtt_discovery` | `true` | Create the MQTT device and entities |
+| `mqtt_commands` | `true` | Accept commands over MQTT; `false` keeps only the sensors |
 
 ## What is committed
 
@@ -247,6 +304,7 @@ file is still written for existing `command_line` sensors.
 
 Values: `success:pr_created:<url>` · `success:pr_updated:<url>` ·
 `success:pr_unchanged:<url>` · `success:no_changes:` · `success:synced:<sha>` ·
-`success:dry_run:<n files>` · `warning:secrets_held:<n files>` (only files
+`success:discarded:<n files>` · `success:dry_run:<n files>` ·
+`error:timeout:…` · `warning:secrets_held:<n files>` (only files
 that look like they hold a secret were left, see the notification) ·
 `warning:…` · `error:…`

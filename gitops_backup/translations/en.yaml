@@ -45,6 +45,17 @@ configuration:
     description: >-
       In "auto" mode, restart Home Assistant by itself (after a passing config
       check) when merged changes need it, instead of only notifying you.
+  on_invalid_config:
+    name: When pulled changes fail the config check
+    description: >-
+      "notify" leaves the files on disk, does not apply them and tells you.
+      "revert_pr" also opens a pull request that reverts the pulled commits,
+      ready for you to merge.
+  merge_method:
+    name: Merge method
+    description: >-
+      How the panel's "Merge" button merges the backup PR on GitHub. The
+      repository must allow the method.
   sync_mode:
     name: Sync mode
     description: >-
@@ -73,5 +84,12 @@ configuration:
     description: >-
       Create an "HA GitOps" device with sensors, buttons and switches through
       MQTT discovery, when an MQTT broker is set up in Home Assistant.
+  mqtt_commands:
+    name: MQTT buttons and switches
+    description: >-
+      Accept commands over MQTT (sync, back up, pause…). Turn it off to keep
+      only the sensors: any device with a login on your broker can otherwise
+      send these commands. Discard, merge and restart are never accepted over
+      MQTT.
 network:
   8098/tcp: GitHub webhook (only used when a webhook secret is set)

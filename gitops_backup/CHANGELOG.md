@@ -1,5 +1,86 @@
 # Changelog
 
+## 0.5.0
+
+Flow fixes
+
+- Fix: changes pulled by a dry run were never applied. A dry run pulls
+  without applying, and the next run saw nothing new. The app now remembers
+  the last commit it applied and applies everything since. The same holds
+  for changes pulled while the config check was failing.
+- Fix: a run that hangs (a stalled push, for example) no longer blocks the
+  queue for good. It is stopped after 30 minutes (`error:timeout`), a git
+  transfer under 1 kB/s for a minute fails by itself, and a run left
+  half-way puts `HEAD` back on the base branch at the next start.
+- Fix: after failed runs the poller backs off (1 minute, 2, 4… up to an
+  hour) instead of retrying the same pull every interval.
+- Fix: an edit made while a run was in progress was dropped by the file
+  watcher. It is now picked up by a follow-up backup.
+- Fix: a failed config check is reported once per pulled commit, not on
+  every run.
+- Change: `esphome/` and `zigbee2mqtt/` files no longer raise "restart
+  required"; Home Assistant Core does not read them.
+- Change: the backup PR no longer says "close it to drop it", which was not
+  true: closing the PR leaves the changes on the box. Use Discard (below).
+
+From upstream askb/ha-gitops
+
+- A merged dashboard change reaches browsers that already have the dashboard
+  open (0.5.3).
+- When the base branch moves on while a backup PR is open, the next backup
+  is a merge commit, so the PR still shows only the drift (0.4.0).
+- Default `commit_email` is `gitops-backup@users.noreply.github.com`; the
+  `@localhost` default fails the DCO GitHub App. Existing installs keep
+  their saved value (0.5.0).
+- Image: Home Assistant base `3.24` and `apk upgrade` at build time (0.5.2).
+- CI: harden-runner, Trivy image scan, zizmor, CodeQL, Scorecard, Dependabot
+  (0.5.2). Template: required HA gate bumped to 2026.11.
+
+Security
+
+- MQTT: `mqtt_commands: false` keeps the sensors and removes the buttons,
+  switches and update entity. Retained command messages are ignored.
+  `discard`, `merge` and `restart` are never accepted over MQTT.
+- The GitHub and Supervisor tokens are no longer passed to `curl` on the
+  command line.
+- Webhook: bad signatures from one address stop being logged after 10 a
+  minute. Signed deliveries are never limited.
+- A secret-like file that an earlier version already pushed into the open
+  backup PR is taken out of it by the next backup: the scan now covers
+  everything that differs from the base branch. It stays in that branch's
+  history, so rotate the secret.
+- Values that come from outside (a command, its argument, a caller's
+  address) are stripped of line breaks before they are logged, and only
+  `revert` keeps its argument.
+- A file renamed and edited in the same change is scanned too (git reported
+  it as a rename, which the scan skipped).
+
+New
+
+- **Discard local changes** (panel, or the `discard` command): `/config`
+  goes back to the base branch and the open backup PR is closed. Ignored and
+  held-back files stay; a safety copy is kept on the box.
+- **Merge from the panel** when the PR's checks pass, then pull it straight
+  back. `merge_method`: `merge`, `squash` or `rebase`.
+- **Restart Home Assistant** from the panel when merged changes need it,
+  only after a passing config check.
+- `on_invalid_config: revert_pr` opens a PR that reverts pulled changes
+  that fail the config check.
+- Entities: "Held back files" and "Restart required". Events:
+  `ha_gitops_secrets_held`, `ha_gitops_discarded`.
+
+Panel
+
+- Redesigned. A head rule shows the box's commit and GitHub's and whether
+  they agree; one sentence says what is waiting; every changed file is a
+  strip in a bay: not backed up, in review, held back, landed.
+- Files open in place into their diff, new files included. The content of a
+  held-back file is never sent to the panel.
+- Failures, an invalid configuration, a required restart, held files and a
+  paused sync are called out with the action that resolves them.
+- No more redrawing every five seconds (scroll and selection are kept), no
+  sideways scrolling on a phone, keyboard and screen-reader support.
+
 ## 0.4.4
 
 Ported from upstream askb/ha-gitops (0.4.0 to 0.5.2).

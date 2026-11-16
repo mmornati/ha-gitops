@@ -4,178 +4,687 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>HA GitOps</title>
 <style>
   :root {
-    --bg: #f5f5f5; --card: #ffffff; --text: #212121; --muted: #6b6b6b;
-    --line: #e0e0e0; --accent: #03a9f4; --ok: #2e7d32; --warn: #ef6c00; --err: #c62828;
-    --code: #f3f3f3; --add: #e6ffec; --del: #ffebe9;
+    /* the bay: painted metal the strips sit on */
+    --bay: #d7ddd8; --rail: #c6cec8; --rail-edge: #a9b4ad;
+    --on-bay: #17201d; --on-bay-muted: #44504b;
+    /* the strips: paper in holders */
+    --strip: #fbfaf4; --strip-ink: #1a211f; --strip-muted: #5a635d; --strip-rule: #dcd9cb;
+    --strip-shadow: 0 1px 0 rgb(23 32 29 / .18), 0 3px 8px -3px rgb(23 32 29 / .35);
+    /* state fields */
+    --fresh: #e5a31c; --fresh-ink: #2a1c00;
+    --review: #4a8be0; --review-ink: #041b38;
+    --held: #e5695e; --held-ink: #2b0703;
+    --landed: #33a06d; --landed-ink: #03231a;
+    --add: #d3ecd0; --del: #f6d6d0; --hunk: #e9e6da;
+    --focus: #0b4fb3;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+    --ease: cubic-bezier(.16, 1, .3, 1);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #111111; --card: #1c1c1c; --text: #e1e1e1; --muted: #9b9b9b;
-      --line: #2f2f2f; --accent: #4fc3f7; --ok: #66bb6a; --warn: #ffa726; --err: #ef5350;
-      --code: #161616; --add: #12301b; --del: #3a1517;
+      --bay: #121a18; --rail: #1b2624; --rail-edge: #2c3b38;
+      --on-bay: #e1e8e4; --on-bay-muted: #98a8a2;
+      --strip: #ebe6d8; --strip-ink: #171e1c; --strip-muted: #555e58; --strip-rule: #cdc6b3;
+      --strip-shadow: 0 1px 0 rgb(0 0 0 / .5), 0 4px 10px -4px rgb(0 0 0 / .7);
+      --fresh: #f0b23a; --review: #6aa6f0; --held: #ee7468; --landed: #4dbb84;
+      --add: #cfe6cb; --del: #f1cfc8; --hunk: #ddd7c6;
+      --focus: #f0b23a;
     }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
-  h1 { font-size: 20px; margin: 0; }
-  h2 { font-size: 15px; margin: 0 0 12px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
-  .head { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
-  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600;
-          border: 1px solid currentColor; font-size: 12px; }
-  .success { color: var(--ok); } .warning, .pending, .running { color: var(--warn); }
-  .error, .failure { color: var(--err); } .unknown, .none { color: var(--muted); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-  .stat .k { color: var(--muted); font-size: 12px; }
-  .stat .v { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-  button { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--text);
-           border-radius: 8px; padding: 6px 12px; cursor: pointer; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  button:disabled { opacity: .5; cursor: default; }
-  a { color: var(--accent); }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 6px 4px; border-top: 1px solid var(--line); vertical-align: top; }
-  td.sha { font-family: ui-monospace, monospace; white-space: nowrap; }
-  pre { background: var(--code); border-radius: 8px; padding: 12px; margin: 0; overflow: auto;
-        max-height: 480px; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .add { background: var(--add); display: block; } .del { background: var(--del); display: block; }
-  .muted { color: var(--muted); }
-  .tabs { display: flex; gap: 4px; margin-bottom: 12px; }
-  .tabs button[aria-selected="true"] { border-color: var(--accent); color: var(--accent); }
-  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--text);
-           color: var(--bg); padding: 8px 14px; border-radius: 8px; display: none; }
+  html { scrollbar-color: var(--rail-edge) var(--bay); }
+  body { margin: 0; background: var(--bay); color: var(--on-bay); font: 15px/1.5 var(--sans);
+         -webkit-text-size-adjust: 100%; accent-color: var(--review); caret-color: var(--review); }
+  ::selection { background: var(--fresh); color: var(--fresh-ink); }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  code, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7;
+          stroke-linecap: round; stroke-linejoin: round; }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  main { max-width: 1280px; margin: 0 auto; padding: 0 20px 56px; }
+  h1, h2, p, ul, ol { margin: 0; padding: 0; }
+  ul, ol { list-style: none; }
+
+  /* ---- head rule: where the box and GitHub stand ------------------------- */
+  .head { position: sticky; top: 0; z-index: 5; background: var(--bay); border-bottom: 1px solid var(--rail-edge);
+          margin: 0 -20px; padding: 12px 20px 11px; display: grid; gap: 4px 20px;
+          grid-template-columns: auto minmax(0, 1fr); align-items: center; }
+  .head h1 { font-size: 15px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+  .head h1 small { font-weight: 400; color: var(--on-bay-muted); font-size: 12px; margin-left: 6px; }
+  .span { display: grid; grid-template-columns: auto minmax(40px, 1fr) auto; align-items: center; gap: 12px; }
+  .end { display: grid; line-height: 1.2; }
+  .end + .wire + .end { text-align: right; }
+  .end .lbl { font-size: 11px; color: var(--on-bay-muted); }
+  .end code { font-size: 17px; font-weight: 700; }
+  .wire { position: relative; height: 26px; display: grid; place-items: center; overflow: hidden; }
+  .wire::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: var(--rail-edge); }
+  .wire b { position: relative; padding: 0 10px; font: 700 12.5px/26px var(--sans); border-radius: 3px; white-space: nowrap;
+            background: var(--rail-edge); color: var(--on-bay); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .wire[data-link="equal"] b { background: var(--landed); color: var(--landed-ink); }
+  .wire[data-link="drift"] b { background: var(--fresh); color: var(--fresh-ink); }
+  .wire[data-link="behind"] b, .wire[data-link="running"] b { background: var(--review); color: var(--review-ink); }
+  .wire i { position: absolute; inset: 50% 0 auto 0; height: 4px; margin-top: -2px; opacity: 0;
+            background: linear-gradient(90deg, var(--review) 0 36px, transparent 36px); }
+  .wire[data-link="running"] i { opacity: 1; animation: sweep 1.4s var(--ease) infinite alternate; }
+  @keyframes sweep { to { transform: translateX(calc(100% - 36px)); } }
+
+  /* ---- summary, attention, keys ----------------------------------------- */
+  .summary { font-size: 25px; line-height: 1.25; font-weight: 650; letter-spacing: -.02em; margin: 28px 0 6px;
+             max-width: 34em; text-wrap: balance; }
+  .when { color: var(--on-bay-muted); font-size: 13px; }
+  .attention { display: grid; gap: 8px; margin-top: 16px; }
+  .attention li { display: grid; grid-template-columns: 104px minmax(0, 1fr) auto; align-items: center; gap: 0 14px;
+                  background: var(--strip); color: var(--strip-ink); border-radius: 3px; box-shadow: var(--strip-shadow); }
+  .attention .flag { display: flex; align-items: center; gap: 6px; align-self: stretch; grid-row: 1 / span 2;
+                     padding: 0 12px; border-radius: 3px 0 0 3px; font-size: 12px; font-weight: 700; }
+  .attention .key { margin: 8px 10px 8px 0; }
+  .attention .acts { display: flex; flex-wrap: wrap; }
+  .attention [data-tone="error"] .flag { background: var(--held); color: var(--held-ink); }
+  .attention [data-tone="warn"] .flag { background: var(--fresh); color: var(--fresh-ink); }
+  .attention [data-tone="info"] .flag { background: var(--review); color: var(--review-ink); }
+  .attention [data-tone="held"] .flag, [data-bay="held"] .field {
+    background: repeating-linear-gradient(135deg, var(--held) 0 6px, color-mix(in srgb, var(--held) 72%, #fff) 6px 12px);
+    color: var(--held-ink); }
+  .strip :focus-visible, .attention :focus-visible, dialog :focus-visible, #toast :focus-visible { outline-color: var(--strip-ink); }
+  .attention p { padding: 10px 0; min-width: 0; overflow-wrap: anywhere; }
+  .keys { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 22px; }
+  .keys .gap { flex: 1 1 24px; }
+  .key { font: 600 14px/1 var(--sans); min-height: 38px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px;
+         border: 1px solid var(--rail-edge); border-radius: 3px; background: var(--rail); color: var(--on-bay); cursor: pointer;
+         transition: background .15s var(--ease), transform .15s var(--ease), border-color .15s var(--ease); }
+  a.key { text-decoration: none; }
+  .key:hover:not(:disabled) { border-color: var(--on-bay-muted); }
+  .key:active:not(:disabled) { transform: translateY(1px); }
+  .key:disabled { opacity: .45; cursor: default; }
+  .key.primary { background: var(--strip); color: var(--strip-ink); border-color: var(--strip); box-shadow: var(--strip-shadow); }
+  .key.danger { background: var(--held); color: var(--held-ink); border-color: var(--held); }
+  .key.onpaper { background: transparent; color: var(--strip-ink); border-color: var(--strip-muted); min-height: 34px; }
+  .key.onpaper:hover:not(:disabled) { border-color: var(--strip-ink); background: color-mix(in srgb, var(--strip-ink) 7%, transparent); }
+  .key.ink { background: var(--strip-ink); color: var(--strip); border-color: var(--strip-ink); }
+  .switch { font: 500 14px/1 var(--sans); min-height: 38px; display: inline-flex; align-items: center; gap: 10px;
+            background: none; border: 0; color: var(--on-bay); cursor: pointer; padding: 0 4px; }
+  .switch .track { width: 38px; height: 22px; border-radius: 11px; background: var(--rail-edge); position: relative;
+                   transition: background .2s var(--ease); flex: none; }
+  .switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+                          background: var(--strip); box-shadow: 0 1px 2px rgb(0 0 0 / .35); transition: transform .2s var(--ease); }
+  .switch[aria-checked="true"] .track { background: var(--landed); }
+  .switch[aria-checked="true"] .track::after { transform: translateX(16px); }
+
+  /* ---- bays -------------------------------------------------------------- */
+  .bays { display: grid; gap: 16px; margin-top: 30px; align-items: start; }
+  @media (min-width: 720px) { .bays { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bay.wide { grid-column: 1 / -1; } }
+  @media (min-width: 1080px) { .bays { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .bay { min-width: 0; background: var(--rail); border-top: 3px solid var(--rail-edge); border-radius: 0 0 3px 3px; padding: 10px 12px 12px; }
+  .bay { scroll-margin-top: 84px; }
+  .bay > header { display: flex; align-items: baseline; gap: 10px; padding: 2px 2px 10px; }
+  .bay h2 { font-size: 14px; font-weight: 700; }
+  .bay .count { font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--on-bay-muted); }
+  .bay .note { color: var(--on-bay-muted); font-size: 13px; padding: 0 2px 10px; overflow-wrap: anywhere; }
+  .bay .note a { color: var(--on-bay); font-weight: 600; }
+  .bay .empty { color: var(--on-bay-muted); font-size: 14px; padding: 14px 2px 6px; max-width: 34em; }
+  .rail { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .bay .rail { border-top: 1px solid var(--rail-edge); padding-top: 12px; }
+  .checks { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+  .checks::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--on-bay-muted); }
+  .checks[data-c="success"]::before { background: var(--landed); }
+  .checks[data-c="pending"]::before { background: var(--fresh); }
+  .checks[data-c="failure"]::before { background: var(--held); }
+
+  /* ---- strips ------------------------------------------------------------ */
+  .strips { display: grid; gap: 6px; }
+  .strip { background: var(--strip); color: var(--strip-ink); border-radius: 3px; box-shadow: var(--strip-shadow); min-width: 0; }
+  .strip > .row { width: 100%; display: grid; grid-template-columns: 62px minmax(0, 1fr) auto auto; align-items: stretch;
+                  gap: 0 10px; border: 0; background: none; color: inherit; font: inherit; text-align: left; padding: 0;
+                  min-height: 42px; cursor: pointer; border-radius: 3px; }
+  .strip > div.row { cursor: default; }
+  .strip > button.row { transition: background .15s var(--ease); }
+  .strip > button.row:hover { background: color-mix(in srgb, var(--strip-ink) 7%, transparent); }
+  .strip:has(> [aria-expanded="true"]) { box-shadow: var(--strip-shadow), 0 14px 28px -14px rgb(0 0 0 / .55); }
+  .strip.mark { outline: 2px solid var(--held); outline-offset: 2px; }
+  .field { display: grid; place-items: center; font: 700 11px/1 var(--sans); letter-spacing: .05em; text-transform: uppercase;
+           border-radius: 3px 0 0 3px; background: var(--fresh); color: var(--fresh-ink); }
+  [data-bay="review"] .field { background: var(--review); color: var(--review-ink); }
+  [data-bay="landed"] .row { grid-template-columns: 76px minmax(0, 1fr) auto; }
+  [data-bay="landed"] .field { background: var(--landed); color: var(--landed-ink); font: 600 12px var(--mono);
+                               letter-spacing: 0; text-transform: none; }
+  .path { align-self: center; font: 13px/1.35 var(--mono); overflow-wrap: anywhere; padding: 6px 0; min-width: 0; }
+  .path .dir { color: var(--strip-muted); }
+  .path .name { font-weight: 700; }
+  .path .was { display: block; color: var(--strip-muted); font-size: 12px; }
+  .delta { align-self: center; font: 600 12px var(--mono); white-space: nowrap; color: var(--strip-muted); }
+  .delta .a { color: #1c6b3a; } .delta .d { color: #a02a1f; }
+  .chev { align-self: center; margin-right: 10px; color: var(--strip-muted); transition: transform .2s var(--ease); }
+  .row[aria-expanded="true"] .chev { transform: rotate(90deg); }
+  .strip .what { align-self: center; padding: 6px 0; min-width: 0; }
+  .strip .what b { display: block; font-weight: 600; overflow-wrap: anywhere; }
+  .strip .what span { color: var(--strip-muted); font-size: 12.5px; }
+  .strip .act { align-self: center; margin-right: 8px; }
+  .more { color: var(--on-bay-muted); font-size: 13px; padding: 8px 2px 0; }
+  .diff { border-top: 1px solid var(--strip-rule); margin: 0; max-height: 440px; overflow: auto; font: 12px/1.5 var(--mono);
+          scrollbar-color: var(--strip-muted) var(--strip); border-radius: 0 0 3px 3px; tab-size: 2; }
+  .diff { animation: unfold .22s var(--ease); }
+  @keyframes unfold { from { clip-path: inset(0 0 100% 0); opacity: .3; } }
+  .diff span { display: block; padding: 0 12px; white-space: pre; min-width: max-content; }
+  .diff .a { background: var(--add); } .diff .d { background: var(--del); }
+  .diff .h { background: var(--hunk); color: var(--strip-muted); }
+  .diff .n { color: var(--strip-muted); font-family: var(--sans); padding: 10px 12px; white-space: normal; min-width: 0; }
+
+  /* ---- log --------------------------------------------------------------- */
+  details.log { margin-top: 16px; background: var(--rail); border-top: 3px solid var(--rail-edge); border-radius: 0 0 3px 3px; scroll-margin-top: 84px; }
+  details.log summary { cursor: pointer; padding: 12px 14px; font-weight: 700; font-size: 14px; list-style: none;
+                        display: flex; align-items: center; gap: 8px; }
+  details.log summary::-webkit-details-marker { display: none; }
+  details.log[open] summary .chev { transform: rotate(90deg); }
+  details.log summary .chev { color: var(--on-bay-muted); margin: 0; }
+  details.log pre { margin: 0; padding: 0 14px 14px; max-height: 420px; overflow: auto; font: 12px/1.55 var(--mono);
+                    color: var(--on-bay-muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+  footer { margin-top: 22px; color: var(--on-bay-muted); font-size: 12.5px; }
+
+  /* ---- dialog + toast ---------------------------------------------------- */
+  dialog { border: 0; border-radius: 6px; padding: 0; background: var(--strip); color: var(--strip-ink);
+           width: min(440px, calc(100vw - 32px)); box-shadow: 0 24px 60px -12px rgb(0 0 0 / .6); }
+  dialog::backdrop { background: rgb(8 14 12 / .6); }
+  dialog form { padding: 20px; display: grid; gap: 12px; }
+  dialog h2 { font-size: 18px; line-height: 1.25; }
+  dialog p { color: var(--strip-muted); }
+  dialog .rail { justify-content: flex-end; margin-top: 6px; }
+  #toast { position: fixed; left: 50%; bottom: 20px; translate: -50% 12px; background: var(--strip); color: var(--strip-ink);
+           padding: 10px 14px; border-radius: 3px; box-shadow: var(--strip-shadow), 0 12px 30px -10px rgb(0 0 0 / .5);
+           font-weight: 600; max-width: calc(100vw - 32px); opacity: 0; pointer-events: none; z-index: 10;
+           transition: opacity .2s var(--ease), translate .2s var(--ease); }
+  #toast.on { opacity: 1; translate: -50% 0; }
+  #toast[data-tone="error"] { background: var(--held); color: var(--held-ink); }
+
+  @media (max-width: 560px) {
+    main { padding: 0 14px 48px; }
+    .head { margin: 0 -14px; padding: 10px 14px 9px; grid-template-columns: minmax(0, 1fr); }
+    .span { justify-self: stretch; width: auto; }
+    .summary { font-size: 21px; margin-top: 20px; }
+    .key, .key.onpaper, .switch { min-height: 44px; }
+    .keys .key { flex: 1 1 auto; justify-content: center; }
+    .keys .gap { display: none; }
+    .keys .switch { flex: 1 1 100%; justify-content: space-between; }
+    .strip > .row { min-height: 48px; grid-template-columns: 54px minmax(0, 1fr) auto auto; }
+    [data-bay="landed"] .row { grid-template-columns: 70px minmax(0, 1fr); }
+    [data-bay="landed"] .field { grid-row: 1 / span 2; }
+    .strip .act { grid-column: 2; margin: 0 0 8px; }
+    .attention li { grid-template-columns: 92px minmax(0, 1fr); }
+    .attention li > .key, .attention .acts { grid-column: 2; justify-self: start; }
+    .attention .key { margin: 0 10px 10px 0; }
+    .attention p { padding-right: 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; transition: none !important; }
+    .wire[data-link="running"] i { opacity: 0; }
+  }
+  ::view-transition-group(*) { animation-duration: .25s; animation-timing-function: cubic-bezier(.16, 1, .3, 1); }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 20V9M7 13l5-5 5 5M5 4h14"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24"><circle cx="6.5" cy="5.5" r="2.2"/><circle cx="6.5" cy="18.5" r="2.2"/><circle cx="17.5" cy="12" r="2.2"/><path d="M6.5 7.7v8.6M6.5 8c0 3 3 4 8.8 4"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-restart" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4 2.8 19.5h18.4L12 4ZM12 10v4.5M12 17.2v.1"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M8 5 3.5 9.5 8 14M3.5 9.5H14a6 6 0 0 1 0 12h-3"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.6v.1"/></symbol>
+</svg>
+
 <main>
-  <div class="head">
-    <h1>HA GitOps</h1>
-    <div class="actions">
-      <button class="primary" data-cmd="sync">Sync now</button>
-      <button data-cmd="backup">Back up now</button>
-      <button data-cmd="dry_run">Dry run</button>
-      <button id="pause"></button>
-      <button id="apply"></button>
+  <header class="head">
+    <h1>HA GitOps <small id="ver"></small></h1>
+    <div class="span" role="group" aria-label="Where the box and GitHub stand">
+      <div class="end"><span class="lbl">The box</span><code id="local">·······</code></div>
+      <div class="wire" id="wire" data-link="unknown"><i></i><b id="wire-word">checking</b></div>
+      <div class="end"><span class="lbl" id="hub-lbl">GitHub</span><code><a id="remote" target="_blank" rel="noopener">·······</a></code></div>
     </div>
+  </header>
+
+  <p class="summary" id="summary" role="status">Reading the state of the box…</p>
+  <p class="when" id="when"></p>
+  <ul class="attention" id="attention" aria-label="Needs your attention"></ul>
+
+  <div class="keys" role="group" aria-label="Runs and settings">
+    <button class="key" data-cmd="sync" id="k-sync"><svg class="i"><use href="#i-down"/></svg>Sync now</button>
+    <button class="key" data-cmd="backup"><svg class="i"><use href="#i-up"/></svg>Back up now</button>
+    <button class="key" data-cmd="dry_run"><svg class="i"><use href="#i-eye"/></svg>Dry run</button>
+    <span class="gap"></span>
+    <button class="switch" role="switch" id="sw-auto" aria-checked="true"><span>Automatic sync</span><span class="track"></span></button>
+    <button class="switch" role="switch" id="sw-apply" aria-checked="true"><span>Apply merged changes</span><span class="track"></span></button>
   </div>
 
-  <section class="card">
-    <h2>Status <span id="state" class="pill unknown">…</span></h2>
-    <div class="grid" id="stats"></div>
-  </section>
+  <div class="bays">
+    <section class="bay" data-bay="fresh" aria-labelledby="h-fresh">
+      <header><h2 id="h-fresh">Not backed up</h2><span class="count" id="c-fresh"></span></header>
+      <div id="b-fresh"></div>
+    </section>
+    <section class="bay" data-bay="review" aria-labelledby="h-review">
+      <header><h2 id="h-review">In review</h2><span class="count" id="c-review"></span></header>
+      <div id="b-review"></div>
+    </section>
+    <section class="bay" data-bay="held" aria-labelledby="h-held" id="bay-held">
+      <header><h2 id="h-held">Held back</h2><span class="count" id="c-held"></span></header>
+      <div id="b-held"></div>
+    </section>
+    <section class="bay wide" data-bay="landed" aria-labelledby="h-landed">
+      <header><h2 id="h-landed">Landed</h2><span class="count" id="c-landed"></span></header>
+      <div id="b-landed"></div>
+    </section>
+  </div>
 
-  <section class="card">
-    <h2>Pending changes on the box</h2>
-    <div id="files" class="muted">Loading…</div>
-    <details style="margin-top:8px"><summary>Diff</summary><pre id="diff"></pre></details>
-  </section>
-
-  <section class="card">
-    <div class="tabs">
-      <button data-tab="history" aria-selected="true">History</button>
-      <button data-tab="log" aria-selected="false">Log</button>
-    </div>
-    <div id="tab-history"><table id="history"></table></div>
-    <div id="tab-log" hidden><pre id="log"></pre></div>
-  </section>
+  <details class="log" id="log-box">
+    <summary><svg class="i chev"><use href="#i-chev"/></svg>Run log</summary>
+    <pre id="log" tabindex="0" aria-label="Run log"></pre>
+  </details>
+  <footer id="foot"></footer>
 </main>
-<div id="toast"></div>
-<script>
-const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let state = {};
 
-function toast(msg) {
-  const t = $("#toast"); t.textContent = msg; t.style.display = "block";
-  clearTimeout(toast.timer); toast.timer = setTimeout(() => (t.style.display = "none"), 2500);
+<dialog id="ask" aria-labelledby="ask-title">
+  <form method="dialog">
+    <h2 id="ask-title"></h2>
+    <p id="ask-body"></p>
+    <div class="rail">
+      <button class="key onpaper" value="no" id="ask-no">Cancel</button>
+      <button class="key" value="yes" id="ask-yes"></button>
+    </div>
+  </form>
+</dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const icon = (n) => `<svg class="i" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const lower = (t) => t.charAt(0).toLowerCase() + t.slice(1);
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many || one + "s"}`;
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const MAX_STRIPS = 150, MAX_DIFF_LINES = 1500;
+
+let S = null, drift = {files: [], diff: "", truncated: false}, history = null, diffs = new Map();
+let stateJson = "", driftKey = "", historyKey = "", offline = false;
+const open = new Set();
+
+// What the engine's result codes mean, in words
+const RESULT = {
+  pr_created: "A backup PR was opened", pr_updated: "The backup was added to the open PR",
+  pr_unchanged: "Nothing new since the open PR", no_changes: "Nothing to back up",
+  synced: "Merged changes were pulled", up_to_date: "Already up to date", dry_run: "Dry run, nothing was pushed",
+  stash_conflict: "The box's version was kept where it conflicted with GitHub",
+  pull_rebase_failed: "Could not pull from GitHub", secrets_held: "Only held-back files were left to back up",
+  discarded: "Local changes were discarded", revert_pr: "A revert PR was opened", revert: "The revert could not be prepared",
+  branch_pushed: "The branch was pushed, but the PR could not be opened", timeout: "The run took too long and was stopped",
+  config: "The GitHub repository or token is missing", secret_scan: "The secret scan could not run, so nothing was pushed",
+  bootstrap: "The initial import was pushed",
+};
+const CHANGE = {added: "new", modified: "edit", deleted: "gone", renamed: "moved"};
+
+function toast(msg, tone) {
+  const t = $("#toast");
+  t.textContent = msg; t.dataset.tone = tone || ""; t.classList.add("on");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove("on"), tone === "error" ? 7000 : 2600);
 }
 
 async function api(path, body) {
-  const opts = body ? { method: "POST", body: JSON.stringify(body),
-    headers: { "Content-Type": "application/json", "X-Requested-With": "ha-gitops" } } : {};
+  const opts = body ? {method: "POST", body: JSON.stringify(body),
+    headers: {"Content-Type": "application/json", "X-Requested-With": "ha-gitops"}} : {};
   const r = await fetch(path, opts);
   return r.json();
 }
 
+function ask(title, body, yes, danger) {
+  const d = $("#ask");
+  $("#ask-title").textContent = title; $("#ask-body").textContent = body;
+  const b = $("#ask-yes"); b.textContent = yes; b.className = "key " + (danger ? "danger" : "ink");
+  d.returnValue = "no"; d.showModal(); $("#ask-no").focus();
+  return new Promise((done) => d.addEventListener("close", () => done(d.returnValue === "yes"), {once: true}));
+}
+
+const QUEUED = {sync: "Sync queued", backup: "Backup queued", dry_run: "Dry run queued", revert: "Revert PR queued",
+  discard: "Discarding local changes", merge: "Merged. Pulling it to the box", restart: "Home Assistant is restarting",
+  pause: "Automatic sync paused", resume: "Automatic sync resumed",
+  auto_apply_on: "Merged changes will be applied", auto_apply_off: "Merged changes will not be applied"};
+
 async function command(cmd, arg) {
-  const r = await api("api/command", { command: cmd, arg: arg || "" });
-  toast(r.result === "ok" ? `${cmd.replace("_", " ")} queued` : r.result);
-  setTimeout(refresh, 800);
-}
-
-function stat(k, v) { return `<div class="stat"><div class="k">${esc(k)}</div><div class="v">${v}</div></div>`; }
-
-function renderState(s) {
-  state = s;
-  const st = $("#state"); st.textContent = s.state; st.className = `pill ${s.state}`;
-  const pr = s.pr_url ? `<a href="${esc(s.pr_url)}" target="_blank" rel="noopener">#${esc(s.pr_number || "?")}</a>
-    <span class="pill ${esc(s.pr_checks)}">${esc(s.pr_checks)}</span>` : '<span class="muted">none</span>';
-  const when = s.last_run ? new Date(s.last_run).toLocaleString() : "never";
-  $("#stats").innerHTML =
-    stat("Last result", esc(`${s.detail || "–"} ${s.extra && !s.extra.startsWith("http") ? s.extra : ""}`)) +
-    stat("Last run", `${esc(when)}<div class="muted">${esc(s.trigger || "")}</div>`) +
-    stat("Open PR", pr) +
-    stat("Pending files", esc(s.pending)) +
-    stat("Local / remote", `<span class="sha">${esc((s.local_head || "–").slice(0, 7))} / ${esc((s.remote_head || "–").slice(0, 7))}</span>`) +
-    stat("Last apply", esc(s.applied || "none")) +
-    stat("Sync mode", esc(s.sync_mode) + (s.webhook ? " · webhook on" : ""));
-  $("#pause").textContent = s.paused ? "Resume automatic sync" : "Pause automatic sync";
-  $("#apply").textContent = s.auto_apply ? "Auto-apply: on" : "Auto-apply: off";
-  document.querySelectorAll("[data-cmd]").forEach((b) => (b.disabled = s.running));
-}
-
-function renderDiff(d) {
-  $("#files").innerHTML = d.files.length
-    ? `<table>${d.files.map((f) => `<tr><td class="sha">${esc(f.slice(0, 2))}</td><td>${esc(f.slice(3))}</td></tr>`).join("")}</table>`
-    : '<span class="muted">No changes: the box matches the base branch.</span>';
-  $("#diff").innerHTML = esc(d.diff || "No diff for tracked files.").split("\n").map((l) =>
-    l.startsWith("+") && !l.startsWith("+++") ? `<span class="add">${l}</span>` :
-    l.startsWith("-") && !l.startsWith("---") ? `<span class="del">${l}</span>` : l).join("\n");
-}
-
-function renderHistory(h) {
-  $("#history").innerHTML = h.commits.map((c, i) => `<tr>
-    <td class="sha"><a href="${esc(h.repo_url)}/commit/${esc(c.sha)}" target="_blank" rel="noopener">${esc(c.sha.slice(0, 7))}</a></td>
-    <td>${esc(c.subject)}<div class="muted">${esc(c.author)} · ${esc(new Date(c.date).toLocaleString())}</div></td>
-    <td>${i === h.commits.length - 1 ? "" : `<button data-revert="${esc(c.sha)}">Revert…</button>`}</td></tr>`).join("");
-}
-
-async function refresh() {
   try {
-    renderState(await api("api/state"));
-    renderDiff(await api("api/diff"));
-    if (!$("#tab-history").hidden) renderHistory(await api("api/history"));
-    if (!$("#tab-log").hidden) {
-      const l = await api("api/log");
-      const pre = $("#log"); pre.textContent = l.lines.join("\n"); pre.scrollTop = pre.scrollHeight;
-    }
-  } catch (e) { toast("Could not reach the app"); }
+    const r = await api("api/command", {command: cmd, arg: arg || ""});
+    if (r.result === "ok") toast(QUEUED[cmd] || "Done");
+    else toast(r.result[0].toUpperCase() + r.result.slice(1), "error");
+  } catch (e) { toast("Could not reach the app", "error"); }
+  setTimeout(poll, 700);
 }
 
-document.addEventListener("click", (e) => {
-  const b = e.target.closest("button"); if (!b) return;
-  if (b.dataset.cmd) command(b.dataset.cmd);
-  else if (b.id === "pause") command(state.paused ? "resume" : "pause");
-  else if (b.id === "apply") command(state.auto_apply ? "auto_apply_off" : "auto_apply_on");
-  else if (b.dataset.revert) {
-    if (confirm(`Open a PR that reverts ${b.dataset.revert.slice(0, 7)}? Nothing changes on the box until you merge it.`))
-      command("revert", b.dataset.revert);
-  } else if (b.dataset.tab) {
-    document.querySelectorAll("[data-tab]").forEach((t) => t.setAttribute("aria-selected", t === b));
-    $("#tab-history").hidden = b.dataset.tab !== "history";
-    $("#tab-log").hidden = b.dataset.tab !== "log";
-    refresh();
+function ago(iso) {
+  if (!iso) return "";
+  const s = Math.max(0, (Date.now() - new Date(iso)) / 1000);
+  if (s < 50) return "just now";
+  if (s < 3300) return `${Math.round(s / 60)} min ago`;
+  if (s < 82800) return plural(Math.round(s / 3600), "hour") + " ago";
+  return plural(Math.round(s / 86400), "day") + " ago";
+}
+
+// ---- head rule, summary, attention ---------------------------------------
+function renderState() {
+  const s = S, sha = (v) => (v || "").slice(0, 7) || "·······";
+  const behind = s.remote_head && s.local_head && s.remote_head !== s.local_head;
+  $("#ver").textContent = s.version && s.version !== "dev" ? s.version : "";
+  $("#local").textContent = sha(s.local_head);
+  const remote = $("#remote");
+  remote.textContent = sha(s.remote_head);
+  if (s.repo) remote.href = `https://github.com/${s.repo}/commits/${encodeURIComponent(s.base)}`;
+  $("#hub-lbl").textContent = `GitHub · ${s.base || ""}`;
+  const link = offline ? "unknown" : s.running ? "running" : behind ? "behind" : !s.local_head ? "unknown"
+    : s.pending ? "drift" : "equal";
+  $("#wire").dataset.link = link;
+  $("#wire-word").textContent = offline ? "last known" : {running: "run in progress", behind: "GitHub is ahead",
+    drift: "box has changes", equal: "in agreement", unknown: "no repository yet"}[link];
+  $("#k-sync").classList.toggle("primary", behind && !s.running);
+
+  const nPr = s.pending - s.pending_new - s.held.length;
+  const checksFailed = s.pr_number && s.pr_checks === "failure";
+  const invalid = (s.applied || "").includes("config_invalid");
+  let line;
+  if (s.running) line = "A run is in progress.";
+  else if (!s.local_head) line = "This box has not been imported to GitHub yet. Back up now to push the initial import.";
+  else {
+    const parts = [];
+    if (s.pending_new) parts.push(`${plural(s.pending_new, "file")} not backed up`);
+    if (nPr > 0) parts.push(`${plural(nPr, "file")} waiting in backup PR${s.pr_number ? " #" + s.pr_number : ""}${checksFailed ? " (checks failed)" : ""}`);
+    if (s.held.length) parts.push(`${plural(s.held.length, "file")} held back`);
+    const agree = behind ? "GitHub has changes the box has not pulled yet." : "The box and GitHub agree.";
+    line = parts.length ? `${behind ? agree + " " : ""}On the box: ${parts.join(", ")}.` : `${agree} Nothing is waiting.`;
+  }
+  $("#summary").textContent = line;
+  const result = RESULT[s.detail] || s.detail || "";
+  $("#when").textContent = s.last_run
+    ? `Last run ${ago(s.last_run)}${s.trigger ? ` (${s.trigger})` : ""}${result ? ": " + lower(result) : ""}.` : "No run yet.";
+  $("#when").title = s.last_run ? new Date(s.last_run).toLocaleString() : "";
+
+  const items = [];
+  const note = (tone, flag, text, action) => items.push({tone, flag, text, action});
+  if (offline) note("error", "Offline", "The panel cannot reach the app. It will keep trying.");
+  const logKey = `<button class="key onpaper" data-act="log">Open the run log</button>`;
+  if (s.state === "error" && !s.running) {
+    const why = RESULT[s.detail] || s.detail;
+    const extra = s.extra && !/^https?:/.test(s.extra) ? ` (${s.extra})` : "";
+    if (s.detail === "config")
+      note("error", "Failed", `${why}. Set github_repo and github_token in the app's Configuration tab, then restart the app.`);
+    else
+      note("error", "Failed", `${why}${extra}.`,
+        `<span class="acts"><button class="key onpaper" data-cmd="sync">${icon("down")}Sync again</button>${logKey}</span>`);
+  }
+  if (invalid)
+    note("error", "Invalid", "Pulled changes failed the configuration check and were not applied. Do not restart Home Assistant until this is fixed on GitHub or reverted.", logKey);
+  // Never offered next to an invalid configuration: a restart would boot into it
+  if (s.restart_required && !invalid)
+    note("warn", "Restart", "Merged changes only load when Home Assistant starts.",
+      `<button class="key onpaper" data-act="restart">${icon("restart")}Restart Home Assistant</button>`);
+  if (checksFailed)
+    note("warn", "Checks", `The checks on backup PR #${s.pr_number} failed, so it cannot be merged from here. Fix the configuration on the box; the next backup updates the PR.`,
+      `<a class="key onpaper" href="${esc(s.pr_url)}" target="_blank" rel="noopener">${icon("out")}See the checks</a>`);
+  if (s.state === "warning" && s.detail === "stash_conflict" && !s.running)
+    note("warn", "Conflict", `${RESULT.stash_conflict}. Check the files below before you merge.`);
+  if (s.state === "warning" && s.detail === "branch_pushed" && !s.running)
+    note("warn", "No PR", `${RESULT.branch_pushed}. Open it on GitHub from branch ${s.extra}.`);
+  if (s.held.length)
+    note("held", "Held", s.held.length === 1 ? "1 file looks like it contains a secret and stays on the box." : `${s.held.length} files look like they contain a secret and stay on the box.`,
+      `<button class="key onpaper" data-act="held">${icon("lock")}Show ${s.held.length === 1 ? "it" : "them"}</button>`);
+  if (s.retry_in > 0)
+    note("info", "Waiting", `The last runs failed, so automatic pulls wait ${Math.ceil(s.retry_in / 60)} min before trying again.`);
+  if (s.paused)
+    note("info", "Paused", "Automatic sync is paused. Nothing runs until you resume it or press a key.",
+      `<button class="key onpaper" data-act="resume">Resume</button>`);
+  $("#attention").innerHTML = items.map((i) => `<li data-tone="${i.tone}"><span class="flag">${icon(i.tone === "info" ? "info" : i.tone === "held" ? "lock" : "warn")}${esc(i.flag)}</span><p>${esc(i.text)}</p>${i.action || ""}</li>`).join("");
+
+  const auto = $("#sw-auto"), apply = $("#sw-apply");
+  auto.setAttribute("aria-checked", String(!s.paused));
+  apply.setAttribute("aria-checked", String(!!s.auto_apply));
+  document.querySelectorAll("[data-cmd]").forEach((b) => (b.disabled = s.running));
+  const bits = [`Sync mode: ${s.sync_mode}`, s.webhook ? "webhook on" : "webhook off",
+    s.mqtt ? (s.mqtt_commands ? "MQTT entities and commands" : "MQTT sensors only") : "no MQTT"];
+  $("#foot").textContent = bits.join(" · ");
+}
+
+// ---- strips ----------------------------------------------------------------
+function splitDiff(text) {
+  const map = new Map();
+  for (const chunk of text.split(/^(?=diff --git )/m)) {
+    if (!chunk.startsWith("diff --git ")) continue;
+    const lines = chunk.split("\n");
+    let path = null, start = 1;
+    for (let i = 1; i < lines.length; i++) {
+      const l = lines[i];
+      if (l.startsWith("rename to ")) path = l.slice(10);
+      if (l.startsWith("+++ ")) { if (l !== "+++ /dev/null") path = l.slice(6); start = i + 1; break; }
+      if (l.startsWith("--- ") && l !== "--- /dev/null") path = l.slice(6);
+      if (l.startsWith("@@")) { start = i; break; }
+      if (l.startsWith("Binary files")) { start = i; break; }
+      start = i + 1;
+    }
+    if (path === null) continue;
+    const body = lines.slice(start);
+    if (body.length && body[body.length - 1] === "") body.pop();
+    let a = 0, d = 0;
+    for (const l of body) { if (l[0] === "+") a++; else if (l[0] === "-") d++; }
+    map.set(path.replace(/\t$/, ""), {body, a, d});
+  }
+  return map;
+}
+
+function ident(path) {  // a CSS identifier for the strip's view transition
+  let h = 5381;
+  for (let i = 0; i < path.length; i++) h = ((h << 5) + h + path.charCodeAt(i)) >>> 0;
+  return "s" + h.toString(36);
+}
+
+function pathHtml(f) {
+  const cut = f.path.lastIndexOf("/") + 1;
+  return `<span class="path"><span class="dir">${esc(f.path.slice(0, cut))}</span><span class="name">${esc(f.path.slice(cut))}</span>${
+    f.old ? `<span class="was">was ${esc(f.old)}</span>` : ""}</span>`;
+}
+
+function diffHtml(f) {
+  if (f.held) return `<div class="diff"><span class="n">The content of a held-back file is never shown here or sent to GitHub.</span></div>`;
+  const d = diffs.get(f.path);
+  if (!d || !d.body.length)
+    return `<div class="diff"><span class="n">${f.status === "renamed" ? "Moved without changes." : drift.truncated ? "This diff was cut for size. See it on GitHub once it is backed up." : "No text changes to show."}</span></div>`;
+  const rows = d.body.slice(0, MAX_DIFF_LINES).map((l) => {
+    const c = l[0] === "+" ? "a" : l[0] === "-" ? "d" : l.startsWith("@@") ? "h" : "";
+    return `<span${c ? ` class="${c}"` : ""}>${esc(l) || " "}</span>`;
+  }).join("");
+  const cut = d.body.length > MAX_DIFF_LINES ? `<span class="n">${d.body.length - MAX_DIFF_LINES} more lines not shown.</span>` : "";
+  return `<div class="diff" tabindex="0" role="region" aria-label="Changes in ${esc(f.path)}">${rows}${cut}</div>`;
+}
+
+function stripHtml(f, names) {
+  const d = diffs.get(f.path), isOpen = open.has(f.path), id = ident(f.path);
+  const vt = names && !names.has(id) ? (names.add(id), ` style="view-transition-name:${id}"`) : "";
+  const delta = f.held ? icon("lock") : d ? `<span class="a">+${d.a}</span> <span class="d">−${d.d}</span>` : "";
+  return `<li class="strip"${vt}>
+    <button class="row" aria-expanded="${isOpen}" data-path="${esc(f.path)}">
+      <span class="field">${f.held ? "held" : CHANGE[f.status] || "edit"}</span>${pathHtml(f)}
+      <span class="delta">${delta}</span><svg class="i chev" aria-hidden="true"><use href="#i-chev"/></svg>
+    </button>${isOpen ? diffHtml(f) : ""}</li>`;
+}
+
+function listHtml(files, names) {
+  const shown = files.slice(0, MAX_STRIPS);
+  return `<ul class="strips">${shown.map((f) => stripHtml(f, names)).join("")}</ul>${
+    files.length > shown.length ? `<p class="more">And ${files.length - shown.length} more, not listed here.</p>` : ""}`;
+}
+
+function renderBays() {
+  const s = S, files = drift.files;
+  const fresh = files.filter((f) => !f.in_pr && !f.held), review = files.filter((f) => f.in_pr), held = files.filter((f) => f.held);
+  const names = files.length <= 80 ? new Set() : null;
+  $("#c-fresh").textContent = fresh.length || "";
+  $("#c-review").textContent = review.length || "";
+  $("#c-held").textContent = held.length || "";
+
+  $("#b-fresh").innerHTML = fresh.length
+    ? `${listHtml(fresh, names)}<div class="rail">
+        <button class="key primary" data-cmd="backup" ${s.running ? "disabled" : ""}>${icon("up")}Back up now</button>
+        <button class="key" data-act="discard" ${s.running ? "disabled" : ""}>${icon("undo")}Discard all local changes…</button></div>`
+    : `<p class="empty">${s.running ? "A run is in progress." : "Nothing waiting. A change made on the box shows up here, then moves to review once it is backed up."}</p>`;
+
+  const prLine = s.pr_url
+    ? `<p class="note"><a href="${esc(s.pr_url)}" target="_blank" rel="noopener">Backup PR #${esc(s.pr_number || "?")}</a> · <span class="checks" data-c="${esc(s.pr_checks)}">${
+        {success: "checks passed", pending: "checks running", failure: "checks failed", none: "no checks", unknown: "checks unknown"}[s.pr_checks] || esc(s.pr_checks)}</span></p>`
+    : s.pr_branch ? `<p class="note">Branch <code>${esc(s.pr_branch)}</code> is pushed, without a PR yet.</p>` : "";
+  const discardKey = review.length && !fresh.length
+    ? `<button class="key" data-act="discard" ${s.running ? "disabled" : ""}>${icon("undo")}Discard all local changes…</button>` : "";
+  $("#b-review").innerHTML = review.length || s.pr_url
+    ? `${prLine}${review.length ? listHtml(review, names) : `<p class="empty">The PR is open, but none of its files differ on the box any more.</p>`}<div class="rail">
+        ${s.pr_url ? `<button class="key primary" data-act="merge" ${s.can_merge ? "" : "disabled"}>${icon("merge")}Merge</button>
+        <a class="key" href="${esc(s.pr_url)}" target="_blank" rel="noopener">${icon("out")}Review on GitHub</a>` : ""}${discardKey}</div>`
+    : `<p class="empty">No backup PR is open. Backed-up changes wait here until you merge them on GitHub.</p>`;
+
+  $("#b-held").innerHTML = held.length
+    ? `<p class="note">${held.length === 1 ? "This looks like it contains a secret, so it stays" : "These look like they contain a secret, so they stay"} on the box. Move the value to <code>secrets.yaml</code> and use <code>!secret</code>, or add the file to <code>.gitignore</code>.</p>${listHtml(held, names)}`
+    : `<p class="empty">Nothing held back. A file whose content looks like a password, key or token would stop here instead of going to GitHub.</p>`;
+}
+
+function renderHistory() {
+  const h = history, s = S;
+  $("#h-landed").textContent = `Landed on ${s.base || "the base branch"}`;
+  if (!h || !h.commits.length) { $("#b-landed").innerHTML = `<p class="empty">No commits yet.</p>`; $("#c-landed").textContent = ""; return; }
+  $("#c-landed").textContent = `last ${h.commits.length}`;
+  $("#b-landed").innerHTML = `<ol class="strips">${h.commits.map((c, i) => `<li class="strip"><div class="row">
+      <a class="field" href="${esc(h.repo_url)}/commit/${esc(c.sha)}" target="_blank" rel="noopener" aria-label="Commit ${esc(c.sha.slice(0, 7))} on GitHub">${esc(c.sha.slice(0, 7))}</a>
+      <span class="what"><b>${esc(c.subject)}</b><span>${esc(c.author)} · <time datetime="${esc(c.date)}" title="${esc(new Date(c.date).toLocaleString())}">${esc(ago(c.date))}</time>${
+        c.sha === s.local_head ? " · on the box" : ""}</span></span>
+      ${i === h.commits.length - 1 ? "" : `<span class="act"><button class="key onpaper" data-revert="${esc(c.sha)}" data-subject="${esc(c.subject)}">${icon("undo")}Revert…</button></span>`}
+    </div></li>`).join("")}</ol>`;
+}
+
+let painted = false;
+function paint(fn) {
+  // The first paint has nothing to move from; later ones let strips travel
+  // between bays. A browser may drop a transition without running its
+  // callback (hidden tab, resize), so the render never depends on it.
+  let ran = false;
+  const run = () => { if (!ran) { ran = true; fn(); } };
+  if (!painted || !document.startViewTransition || reduced || drift.files.length > 80 || document.hidden) {
+    painted = true;
+    return run();
+  }
+  try {
+    const t = document.startViewTransition(run);
+    for (const p of [t.ready, t.finished, t.updateCallbackDone]) p.catch(() => {});
+  } catch (e) { run(); }
+  setTimeout(run, 300);
+}
+
+// ---- polling ---------------------------------------------------------------
+async function poll() {
+  try {
+    const s = await api("api/state");
+    const json = JSON.stringify(s), wasOffline = offline;
+    offline = false;
+    const stateChanged = json !== stateJson || wasOffline;
+    S = s; stateJson = json;
+    const dKey = `${s.rev}|${s.pending}|${s.pending_new}|${s.pr_branch}|${s.held.join()}`;
+    const hKey = `${s.local_head}`;
+    let driftChanged = false;
+    if (!s.running && dKey !== driftKey) {
+      drift = await api("api/diff"); diffs = splitDiff(drift.diff); driftKey = dKey; driftChanged = true;
+    }
+    if (hKey !== historyKey || !history) { history = await api("api/history"); historyKey = hKey; driftChanged = true; }
+    if (stateChanged) renderState();
+    if (driftChanged) paint(() => { renderBays(); renderHistory(); });
+    else if (stateChanged) { renderBays(); renderHistory(); }
+    else $("#when").firstChild && renderWhen();
+    if ($("#log-box").open) loadLog();
+  } catch (e) {
+    if (!offline && S) { offline = true; renderState(); }
+    else if (!S) $("#summary").textContent = "The panel cannot reach the app. It will keep trying.";
+  }
+}
+
+function renderWhen() {  // keeps "3 min ago" honest between state changes
+  const s = S, result = RESULT[s.detail] || s.detail || "";
+  if (s.last_run) $("#when").textContent = `Last run ${ago(s.last_run)}${s.trigger ? ` (${s.trigger})` : ""}${result ? ": " + lower(result) : ""}.`;
+}
+
+async function loadLog() {
+  try {
+    const l = await api("api/log"), pre = $("#log"), text = l.lines.join("\n") || "The log is empty.";
+    if (pre.textContent === text) return;
+    const pinned = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 24;
+    pre.textContent = text;
+    if (pinned) pre.scrollTop = pre.scrollHeight;
+  } catch (e) { /* the attention strip already says the app is unreachable */ }
+}
+
+// ---- actions ---------------------------------------------------------------
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("button, a.key");
+  if (!b || b.disabled) return;
+  if (b.dataset.cmd) return command(b.dataset.cmd);
+  if (b.dataset.path !== undefined) {
+    const path = b.dataset.path, f = drift.files.find((x) => x.path === path);
+    if (!f) return;
+    const li = b.closest(".strip"), was = open.has(path);
+    was ? open.delete(path) : open.add(path);
+    b.setAttribute("aria-expanded", String(!was));
+    const old = li.querySelector(".diff");
+    if (old) old.remove();
+    if (!was) li.insertAdjacentHTML("beforeend", diffHtml(f));
+    return;
+  }
+  if (b.id === "sw-auto") return command(S.paused ? "resume" : "pause");
+  if (b.id === "sw-apply") return command(S.auto_apply ? "auto_apply_off" : "auto_apply_on");
+  const s = S;
+  if (b.dataset.act === "resume") return command("resume");
+  if (b.dataset.act === "log") {
+    const box = $("#log-box");
+    box.open = true; box.scrollIntoView({behavior: reduced ? "auto" : "smooth", block: "start"}); $("#log").focus({preventScroll: true});
+    return;
+  }
+  if (b.dataset.act === "held") {
+    const row = document.querySelector("#b-held .row");
+    if (!row) return;
+    const strip = row.closest(".strip");
+    row.scrollIntoView({behavior: reduced ? "auto" : "smooth", block: "center"}); row.focus({preventScroll: true});
+    strip.classList.add("mark"); setTimeout(() => strip.classList.remove("mark"), 1600);
+    return;
+  }
+  if (b.dataset.act === "restart") {
+    if (await ask("Restart Home Assistant?", "The configuration is checked first. If the check fails, nothing is restarted.", "Restart"))
+      command("restart");
+  } else if (b.dataset.act === "merge") {
+    if (await ask(`Merge backup PR #${s.pr_number}?`, `GitHub merges it into ${s.base}. The box then pulls it, and its files leave this page.`, "Merge"))
+      command("merge");
+  } else if (b.dataset.act === "discard") {
+    const n = s.pending - s.held.length;
+    const pr = s.pr_number ? ` Backup PR #${s.pr_number} is closed.` : "";
+    if (await ask(`Discard ${plural(n, "local change")}?`,
+        `The box goes back to what ${s.base} has. Held-back files and everything git ignores, like secrets.yaml, stay where they are.${pr} A safety copy is kept on the box.`,
+        `Discard ${plural(n, "change")}`, true))
+      command("discard");
+  } else if (b.dataset.revert) {
+    const sha = b.dataset.revert;
+    if (await ask(`Revert ${sha.slice(0, 7)}?`, `This opens a PR that undoes "${b.dataset.subject}". Nothing changes on the box until you merge it.`, "Open revert PR"))
+      command("revert", sha);
   }
 });
+$("#log-box").addEventListener("toggle", (e) => { if (e.target.open) loadLog(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
 
-refresh();
-setInterval(refresh, 5000);
+poll();
+setInterval(() => { if (!document.hidden) poll(); }, 5000);
 </script>
 </body>
 </html>

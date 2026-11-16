@@ -13,7 +13,11 @@ import json
 import re
 
 COMMANDS = {"sync", "backup", "dry_run", "pause", "resume", "auto_apply_on",
-            "auto_apply_off", "revert", "refresh"}
+            "auto_apply_off", "revert", "refresh", "discard", "merge", "restart"}
+# These change the box or the repository for good. They are taken from the
+# panel (behind Home Assistant's login) and from stdin, never from MQTT, where
+# any device with broker credentials could send them.
+PANEL_ONLY = {"discard", "merge", "restart"}
 SHA_RE = re.compile(r"^[0-9a-f]{7,40}$")
 
 # Paths the file watcher never reacts to. The final say is `git check-ignore`;
@@ -27,6 +31,16 @@ IGNORED_NAMES = {".gitops_backup_status", "gitops_backup.log", ".ha_run.lock",
 INOTIFY_EXCLUDE = (r"(/\.git/|/\.git$|/\.storage/|/\.cloud/|/deps/|/tts/|"
                    r"/backups/|/__pycache__/|/node_modules/|\.db(-shm|-wal|-journal)?$|"
                    r"\.log(\.[0-9]+)?$)")
+
+
+def log_safe(value, limit: int = 200) -> str:
+    """A value from outside (a command, an address), safe to put in a log line.
+
+    Line breaks and other control characters are replaced, so the value
+    cannot start a forged log entry, and it is cut to `limit` characters.
+    """
+    text = str(value).replace("\r", " ").replace("\n", " ")
+    return "".join(ch if ch.isprintable() else "?" for ch in text)[:limit]
 
 
 def verify_signature(secret: str, body: bytes, header: str | None) -> bool:
@@ -84,6 +98,8 @@ def parse_command(raw) -> tuple[str, str] | None:
         arg = arg.lower()
         if not SHA_RE.match(arg):
             return None
+    else:
+        arg = ""  # no other command takes an argument: never carry free text along
     return cmd, arg
 
 
@@ -129,6 +145,61 @@ class Debounce:
         self.first = self.last = None
 
 
+def backoff_seconds(failures: int, base: float = 60, cap: float = 3600) -> float:
+    """How long to wait before the poller retries after `failures` failed runs."""
+    if failures <= 0:
+        return 0
+    return min(cap, base * 2 ** (failures - 1))
+
+
+class RateLimiter:
+    """Counts events per key inside a sliding window."""
+
+    def __init__(self, limit: int = 10, window: float = 60, max_keys: int = 1000):
+        self.limit = limit
+        self.window = window
+        self.max_keys = max_keys
+        self.events: dict[str, list[float]] = {}
+
+    def hit(self, key: str, now: float) -> int:
+        """Records one event and returns how many the key has in the window."""
+        if len(self.events) >= self.max_keys and key not in self.events:
+            self.events.clear()
+        recent = [t for t in self.events.get(key, []) if now - t < self.window]
+        recent.append(now)
+        self.events[key] = recent
+        return len(recent)
+
+
+def parse_name_status(raw: str) -> list[dict]:
+    """Parses `git diff --name-status -z` into path/status/old records."""
+    names = {"A": "added", "D": "deleted", "R": "renamed", "C": "added"}
+    tokens = [t for t in raw.split("\0")]
+    out, i = [], 0
+    while i < len(tokens) and tokens[i]:
+        code = tokens[i][:1]
+        if code in ("R", "C") and i + 2 < len(tokens):
+            old, path = tokens[i + 1], tokens[i + 2]
+            i += 3
+        elif i + 1 < len(tokens):
+            old, path = "", tokens[i + 1]
+            i += 2
+        else:
+            break
+        out.append({"path": path, "status": names.get(code, "modified"),
+                    "old": old if code == "R" else ""})
+    return out
+
+
+def can_merge(pr_number, checks: str, running: bool) -> bool:
+    """The open backup PR may be merged from the panel.
+
+    "none" means the repository has no checks at all; "unknown" (GitHub could
+    not be asked), "pending" and "failure" all block.
+    """
+    return bool(pr_number) and not running and checks in ("success", "none")
+
+
 def summarize_checks(check_runs: dict | None, status: dict | None) -> str:
     """Folds GitHub check runs + commit statuses into one word."""
     states = []
@@ -150,8 +221,13 @@ def summarize_checks(check_runs: dict | None, status: dict | None) -> str:
     return "success"
 
 
-def discovery_configs(prefix: str, base: str, version: str) -> list[tuple[str, dict]]:
-    """MQTT discovery payloads for the HA GitOps device."""
+def discovery_configs(prefix: str, base: str, version: str,
+                      commands: bool = True) -> list[tuple[str, dict | None]]:
+    """MQTT discovery payloads for the HA GitOps device.
+
+    With `commands` off, the buttons, switches and the update entity are
+    listed with a None payload: publishing an empty config removes them.
+    """
     device = {
         "identifiers": ["ha_gitops"],
         "name": "HA GitOps",
@@ -194,9 +270,15 @@ def discovery_configs(prefix: str, base: str, version: str) -> list[tuple[str, d
                icon="mdi:check-decagram"),
         entity("sensor", "last_apply", "Last apply",
                value_template="{{ value_json.applied or 'none' }}", icon="mdi:reload"),
+        entity("sensor", "held_files", "Held back files",
+               value_template="{{ value_json.held | count }}", unit_of_measurement="files",
+               state_class="measurement", icon="mdi:file-lock"),
         entity("binary_sensor", "running", "Running",
                value_template="{{ 'ON' if value_json.running else 'OFF' }}",
                device_class="running", entity_category="diagnostic"),
+        entity("binary_sensor", "restart_required", "Restart required",
+               value_template="{{ 'ON' if value_json.restart_required else 'OFF' }}",
+               icon="mdi:restart-alert"),
         entity("button", "sync", "Sync now", command_topic=f"{base}/cmd",
                payload_press="sync", icon="mdi:cloud-download"),
         entity("button", "backup", "Back up now", command_topic=f"{base}/cmd",
@@ -220,4 +302,6 @@ def discovery_configs(prefix: str, base: str, version: str) -> list[tuple[str, d
         "title": "Home Assistant config", "icon": "mdi:source-merge",
     })
     out.append((f"{prefix}/update/ha_gitops/config/config", upd))
+    if not commands:
+        out = [(topic, None if "command_topic" in cfg else cfg) for topic, cfg in out]
     return out

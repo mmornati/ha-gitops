@@ -57,14 +57,14 @@ HOME="$TMP" git config --global "url.$TMP/origin.git.insteadOf" \
   "https://github.com/local/test.git"
 echo "api_key: abcdef1234567890" > "$TMP/config/rest.yaml"  # must not reach the base branch
 run
-if git -C "$TMP/config" ls-files | grep -q "^rest.yaml$"; then
+if grep -q "^rest.yaml$" <<< "$(git -C "$TMP/config" ls-files)"; then
   echo "FAIL: a file with an inline API key was in the initial import"; exit 1
 fi
 rm -f "$TMP/config/rest.yaml"
-git -C "$TMP/config" log --oneline -1 | grep -q "initial" || { echo "FAIL: no bootstrap commit"; exit 1; }
+grep -q "initial" <<< "$(git -C "$TMP/config" log --oneline -1)" || { echo "FAIL: no bootstrap commit"; exit 1; }
 git -c safe.bareRepository=all -C "$TMP/origin.git" rev-parse main >/dev/null || { echo "FAIL: main not pushed"; exit 1; }
 # secrets must not be committed
-if git -C "$TMP/config" ls-files | grep -q secrets.yaml; then
+if grep -q secrets.yaml <<< "$(git -C "$TMP/config" ls-files)"; then
   echo "FAIL: secrets.yaml committed"; exit 1
 fi
 
@@ -72,9 +72,9 @@ fi
 echo "changed" >> "$TMP/config/configuration.yaml"
 echo "new file" > "$TMP/config/new_automation.yaml"
 run
-git -c safe.bareRepository=all -C "$TMP/origin.git" branch | grep -q "auto-backup/" || { echo "FAIL: no backup branch pushed"; exit 1; }
+grep -q "auto-backup/" <<< "$(git -c safe.bareRepository=all -C "$TMP/origin.git" branch)" || { echo "FAIL: no backup branch pushed"; exit 1; }
 status | grep -q "warning:branch_pushed" || { echo "FAIL: drift status = $(status)"; exit 1; }
-git -C "$TMP/config" branch --show-current | grep -q "^main$" || { echo "FAIL: not back on main"; exit 1; }
+grep -q "^main$" <<< "$(git -C "$TMP/config" branch --show-current)" || { echo "FAIL: not back on main"; exit 1; }
 # Returning to main must not roll the live config back to the old main
 grep -q "^changed$" "$TMP/config/configuration.yaml" \
   || { echo "FAIL: live config rolled back after backup"; exit 1; }
@@ -365,9 +365,9 @@ new_tip=$(git -c safe.bareRepository=all -C "$TMP/origin.git" rev-parse "$open_b
 [ "$old_tip" != "$new_tip" ] || { echo "FAIL: open backup branch not updated"; exit 1; }
 [ "$(git -c safe.bareRepository=all -C "$TMP/origin.git" rev-parse "${new_tip}^")" = "$old_tip" ] \
   || { echo "FAIL: rolling push was not a fast-forward"; exit 1; }
-git -c safe.bareRepository=all -C "$TMP/origin.git" ls-tree -r --name-only "$open_branch" \
-  | grep -q "^rolling.yaml$" || { echo "FAIL: rolling drift missing from branch"; exit 1; }
-git -C "$TMP/config" branch --show-current | grep -q "^main$" || { echo "FAIL: not back on main after rolling"; exit 1; }
+grep -q "^rolling.yaml$" <<< "$(git -c safe.bareRepository=all -C "$TMP/origin.git" ls-tree -r --name-only "$open_branch")" \
+  || { echo "FAIL: rolling drift missing from branch"; exit 1; }
+grep -q "^main$" <<< "$(git -C "$TMP/config" branch --show-current)" || { echo "FAIL: not back on main after rolling"; exit 1; }
 # No new drift: nothing pushed, status says the PR already has it
 sleep 1
 run
@@ -407,7 +407,7 @@ GITOPS_MODE=revert REVERT_SHA="$upstream_sha" run
 rb="auto-backup/revert-${upstream_sha:0:7}"
 git -c safe.bareRepository=all -C "$TMP/origin.git" rev-parse -q --verify "$rb" >/dev/null \
   || { echo "FAIL: revert branch not pushed ($(status))"; exit 1; }
-if git -c safe.bareRepository=all -C "$TMP/origin.git" ls-tree -r --name-only "$rb" | grep -q "^upstream.yaml$"; then
+if grep -q "^upstream.yaml$" <<< "$(git -c safe.bareRepository=all -C "$TMP/origin.git" ls-tree -r --name-only "$rb")"; then
   echo "FAIL: revert branch still has the reverted file"; exit 1
 fi
 [ -f "$TMP/config/upstream.yaml" ] || { echo "FAIL: revert touched the live config"; exit 1; }
@@ -452,6 +452,10 @@ classify() {
 [ "$(classify custom_components/x/sensor.py)" = "restart" ] || { echo "FAIL: classify custom_components"; exit 1; }
 [ "$(classify README.md)" = "none" ] || { echo "FAIL: classify README"; exit 1; }
 [ "$(classify themes/dark.yaml)" = "frontend/reload_themes" ] || { echo "FAIL: classify themes"; exit 1; }
+[ "$(classify dashboards/main.yaml)" = "dashboards" ] || { echo "FAIL: classify dashboards"; exit 1; }
+[ "$(classify ui-lovelace.yaml)" = "dashboards" ] || { echo "FAIL: classify ui-lovelace"; exit 1; }
+[ "$(classify esphome/plug.yaml)" = "none" ] || { echo "FAIL: classify esphome"; exit 1; }
+[ "$(classify zigbee2mqtt/configuration.yaml)" = "none" ] || { echo "FAIL: classify zigbee2mqtt"; exit 1; }
 
 # 13. A backup that touches thousands of files (an integration removed or
 #     updated) still opens its PR. The body used to go through argv, and a
@@ -496,6 +500,187 @@ source_run 'update_pull_request 1 "chore: big" "$(pr_body HEAD~1 HEAD)"'
 if grep -q "more files" <<< "$(source_run 'pr_body HEAD~1 HEAD~1')"; then
   echo "FAIL: empty diff says files were skipped"; exit 1
 fi
+
+# ---------------------------------------------------------------------------
+# 14+ run in fresh boxes, with a fake curl standing in for Home Assistant and
+# the GitHub API. It logs its whole command line, so a token passed as an
+# argument would show up in the log.
+# ---------------------------------------------------------------------------
+FAKEBIN="$TMP/fakebin"
+mkdir -p "$FAKEBIN"
+cat > "$FAKEBIN/curl" <<'EOF'
+#!/bin/bash
+method=GET url="" prev="" has_body=false
+for a in "$@"; do
+  [ "$prev" = "-X" ] && method="$a"
+  [ "$a" = "--data-binary" ] && has_body=true
+  prev="$a" url="$a"
+done
+[ "$has_body" = true ] && cat > /dev/null
+echo "$method $url :: $*" >> "$FAKE_LOG"
+case "$url" in
+  */config/core/check_config) echo "{\"result\":\"$(cat "$FAKE_CHECK")\",\"errors\":\"boom\"}" ;;
+  */pulls) if [ "$method" = POST ]; then echo '{"html_url":"https://example/pr/1","number":1}'; else exit 22; fi ;;
+  */pulls\?*) exit 22 ;;
+  *) echo '{}' ;;
+esac
+EOF
+chmod +x "$FAKEBIN/curl"
+
+brun() {
+  OPTIONS="$BOX/data/options.json" CONFIG_DIR="$BOX/config" DATA_DIR="$BOX/data" \
+    HOME="$BOX/home" PATH="$FAKEBIN:$PATH" FAKE_LOG="$BOX/calls.log" FAKE_CHECK="$BOX/check" \
+    SUPERVISOR_TOKEN=sup-token LOCK_WAIT=30 bash "$SCRIPT" >/dev/null 2>&1 || true
+}
+newbox() { # name [extra options, as JSON members]
+  BOX="$TMP/$1"
+  mkdir -p "$BOX/config" "$BOX/data" "$BOX/home"
+  git init -q --bare -b main "$BOX/origin.git"
+  HOME="$BOX/home" git config --global "url.$BOX/origin.git.insteadOf" \
+    "https://github.com/local/test.git"
+  cat > "$BOX/data/options.json" <<EOF
+{"github_repo":"local/test","github_token":"test-token","base_branch":"main",
+ "branch_prefix":"auto-backup","dry_run":false,"commit_name":"Test",
+ "commit_email":"test@localhost","signoff":true${2:+,$2}}
+EOF
+  echo valid > "$BOX/check"
+  : > "$BOX/calls.log"
+  printf 'homeassistant:\n  name: Home\n' > "$BOX/config/configuration.yaml"
+  echo "[]" > "$BOX/config/automations.yaml"
+  echo "wifi: abc" > "$BOX/config/secrets.yaml"
+  brun
+  git clone -q "$BOX/origin.git" "$BOX/dev"
+}
+devpush() { # file content — a change merged on GitHub
+  git -C "$BOX/dev" pull -q origin main
+  printf '%s\n' "$2" > "$BOX/dev/$1"
+  git -C "$BOX/dev" add -A
+  git -C "$BOX/dev" -c user.name=Dev -c user.email=dev@localhost commit -q -m "change $1"
+  git -C "$BOX/dev" push -q origin main
+}
+bstatus() { jq -r "$1" "$BOX/data/status.json"; }
+ogit() { git -c safe.bareRepository=all -C "$BOX/origin.git" "$@"; }
+calls() { grep -c "$1" "$BOX/calls.log" || true; }
+
+# 14. A dry run pulls merged changes without applying them. The next real run
+#     must still apply them, once.
+newbox apply
+devpush automations.yaml "[{alias: merged, description: long enough for git to still call an edited copy a rename}]"
+DRY_RUN_OVERRIDE=true GITOPS_MODE=sync brun
+grep -q merged "$BOX/config/automations.yaml" || { echo "FAIL: dry run did not pull"; exit 1; }
+[ "$(calls services/automation/reload)" = 0 ] || { echo "FAIL: dry run applied changes"; exit 1; }
+GITOPS_MODE=sync brun
+[ "$(calls services/automation/reload)" = 1 ] \
+  || { echo "FAIL: changes pulled by a dry run were never applied"; exit 1; }
+[ "$(bstatus .applied)" = "automation.reload" ] || { echo "FAIL: applied = $(bstatus .applied)"; exit 1; }
+GITOPS_MODE=sync brun
+[ "$(calls services/automation/reload)" = 1 ] || { echo "FAIL: changes applied twice"; exit 1; }
+if grep -qE "test-token|sup-token" "$BOX/calls.log"; then
+  echo "FAIL: a token was passed to curl on the command line"; exit 1
+fi
+
+# 14b. A run that was killed can leave HEAD on a backup branch: the next run
+#      puts it back on the base branch.
+git -C "$BOX/config" symbolic-ref HEAD refs/heads/auto-backup/killed
+GITOPS_MODE=sync brun
+[ "$(git -C "$BOX/config" symbolic-ref HEAD)" = "refs/heads/main" ] \
+  || { echo "FAIL: HEAD left on a backup branch"; exit 1; }
+
+# 14c. A file renamed and given a secret in the same change is still scanned
+#      (git reports it as a rename, which an added/modified filter skips).
+mv "$BOX/config/automations.yaml" "$BOX/config/renamed.yaml"
+echo "password: abcdefgh1234" >> "$BOX/config/renamed.yaml"
+brun
+[ "$(bstatus '.held[0]')" = "renamed.yaml" ] || { echo "FAIL: renamed file with a secret not held = $(bstatus .held)"; exit 1; }
+if grep -q "^renamed.yaml$" <<< "$(ogit ls-tree -r --name-only "$(cut -f1 "$BOX/data/open_pr")")"; then
+  echo "FAIL: a renamed file with a secret was pushed"; exit 1
+fi
+
+# 15. on_invalid_config: revert_pr. Pulled changes that fail the config check
+#     are not applied, are reported once, and get a PR that reverts them.
+newbox invalid '"on_invalid_config":"revert_pr"'
+devpush configuration.yaml "homeassistant: {name: Broken}"
+echo invalid > "$BOX/check"
+GITOPS_MODE=sync brun
+[ "$(bstatus .applied)" = "config_invalid" ] || { echo "FAIL: invalid config applied = $(bstatus .applied)"; exit 1; }
+post=$(git -C "$BOX/config" rev-parse main)
+rb="auto-backup/revert-${post:0:7}"
+ogit rev-parse -q --verify "$rb" >/dev/null || { echo "FAIL: no revert branch for the invalid config"; exit 1; }
+grep -q "name: Home" <<< "$(ogit show "$rb:configuration.yaml")" \
+  || { echo "FAIL: revert branch does not restore the old config"; exit 1; }
+[ "$(calls 'POST .*/pulls ')" = 1 ] || { echo "FAIL: revert PR not opened"; exit 1; }
+notes=$(calls persistent_notification)
+GITOPS_MODE=sync brun
+[ "$(calls persistent_notification)" = "$notes" ] || { echo "FAIL: invalid config reported twice"; exit 1; }
+[ "$(calls 'POST .*/pulls ')" = 1 ] || { echo "FAIL: second revert PR opened"; exit 1; }
+echo valid > "$BOX/check"
+GITOPS_MODE=sync brun
+grep -q restart_required <<< "$(bstatus .applied)" || { echo "FAIL: fixed config not applied = $(bstatus .applied)"; exit 1; }
+[ ! -f "$BOX/data/invalid_head" ] || { echo "FAIL: invalid marker not cleared"; exit 1; }
+
+# 16. The base branch moves on while a backup PR is open: the next backup is
+#     a merge commit, so the PR still shows only the drift.
+newbox pr
+echo "d1" > "$BOX/config/d1.yaml"
+brun
+[ "$(bstatus .detail)" = "pr_created" ] || { echo "FAIL: PR not created = $(bstatus .detail)"; exit 1; }
+prb=$(cut -f1 "$BOX/data/open_pr")
+devpush upstream.yaml "from: github"
+echo "d2" > "$BOX/config/d2.yaml"
+brun
+[ "$(ogit rev-list --parents -n 1 "$prb" | wc -w | tr -d ' ')" = 3 ] \
+  || { echo "FAIL: backup on a moved base is not a merge commit"; exit 1; }
+[ "$(ogit diff --name-only "main...$prb" | sort | tr '\n' ' ')" = "d1.yaml d2.yaml " ] \
+  || { echo "FAIL: PR diff is not limited to the drift: $(ogit diff --name-only "main...$prb" | tr '\n' ' ')"; exit 1; }
+grep -q "Signed-off-by: Test <test@localhost>" <<< "$(ogit log -1 --format=%B "$prb")" \
+  || { echo "FAIL: merge commit lost the sign-off"; exit 1; }
+
+# 17. A secret-like file that an earlier version already put into the open PR
+#     is taken out of it by the next backup.
+git -C "$BOX/dev" fetch -q origin "$prb"
+git -C "$BOX/dev" checkout -q -b pr FETCH_HEAD
+printf 'mqtt:\n  password: SuperSecretPassw0rd\n' > "$BOX/dev/mqtt.yaml"
+git -C "$BOX/dev" add -A
+git -C "$BOX/dev" -c user.name=Dev -c user.email=dev@localhost commit -q -m "old backup with a secret"
+git -C "$BOX/dev" push -q origin "pr:$prb"
+git -C "$BOX/dev" checkout -q main
+printf 'mqtt:\n  password: SuperSecretPassw0rd\n' > "$BOX/config/mqtt.yaml"
+brun
+if grep -q "^mqtt.yaml$" <<< "$(ogit ls-tree -r --name-only "$prb")"; then
+  echo "FAIL: a held file stayed in the open PR"; exit 1
+fi
+[ -f "$BOX/config/mqtt.yaml" ] || { echo "FAIL: held file removed from the box"; exit 1; }
+[ "$(bstatus '.held[0]')" = "mqtt.yaml" ] || { echo "FAIL: held list = $(bstatus .held)"; exit 1; }
+
+# 18. Discard: /config goes back to the base branch. Ignored and held files
+#     stay, a safety copy is kept, and the open backup PR is closed.
+echo "[{alias: local}]" > "$BOX/config/automations.yaml"
+rm "$BOX/config/upstream.yaml"
+DRY_RUN_OVERRIDE=true GITOPS_MODE=discard brun
+[ "$(bstatus .detail)" = "dry_run" ] && [ -f "$BOX/config/d1.yaml" ] \
+  || { echo "FAIL: dry-run discard changed the box"; exit 1; }
+GITOPS_MODE=discard brun
+[ "$(bstatus .detail)" = "discarded" ] || { echo "FAIL: discard status = $(bstatus .detail)"; exit 1; }
+if [ -f "$BOX/config/d1.yaml" ] || [ -f "$BOX/config/d2.yaml" ]; then
+  echo "FAIL: discard left new files behind"; exit 1
+fi
+[ "$(cat "$BOX/config/automations.yaml")" = "[]" ] || { echo "FAIL: discard kept a local edit"; exit 1; }
+[ -f "$BOX/config/upstream.yaml" ] || { echo "FAIL: discard did not restore a deleted file"; exit 1; }
+[ -f "$BOX/config/mqtt.yaml" ] || { echo "FAIL: discard removed a held file"; exit 1; }
+[ -f "$BOX/config/secrets.yaml" ] || { echo "FAIL: discard removed secrets.yaml"; exit 1; }
+[ "$(git -C "$BOX/config" status --porcelain)" = "?? mqtt.yaml" ] \
+  || { echo "FAIL: after discard: $(git -C "$BOX/config" status --porcelain)"; exit 1; }
+safety=$(git -C "$BOX/config" for-each-ref --format='%(refname)' refs/gitops/discarded | tail -1)
+git -C "$BOX/config" cat-file -e "${safety}:d1.yaml" \
+  || { echo "FAIL: no safety copy of the discarded files"; exit 1; }
+if ogit rev-parse -q --verify "$prb" >/dev/null; then
+  echo "FAIL: backup branch still on GitHub after discard"; exit 1
+fi
+[ "$(calls 'PATCH .*/pulls/1 ')" -ge 1 ] || { echo "FAIL: backup PR not closed"; exit 1; }
+[ ! -f "$BOX/data/open_pr" ] || { echo "FAIL: open PR state kept after discard"; exit 1; }
+[ "$(calls services/automation/reload)" -ge 1 ] || { echo "FAIL: discard did not reload HA"; exit 1; }
+brun
+[ "$(bstatus .detail)" = "secrets_held" ] || { echo "FAIL: after discard = $(bstatus .detail)"; exit 1; }
 
 echo "OK: all self-checks passed"
 
